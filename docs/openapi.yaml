@@ -1,0 +1,2206 @@
+openapi: 3.1.0
+info:
+  title: ДомДело API
+  version: 0.1.0
+  description: API MVP для коллективных дел жителей дома
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: session
+    demoUser:
+      type: apiKey
+      in: header
+      name: X-Demo-User
+  schemas: {}
+paths:
+  /api/auth/max:
+    post:
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - initData
+              properties:
+                initData:
+                  type: string
+                  minLength: 1
+      responses:
+        "200":
+          description: Default Response
+  /api/demo/users:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /health/live:
+    get:
+      tags:
+        - health
+      responses:
+        "200":
+          description: Default Response
+  /health/ready:
+    get:
+      tags:
+        - health
+      responses:
+        "200":
+          description: Default Response
+  /api/cases:
+    get:
+      tags:
+        - cases
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+                enum:
+                  - draft
+              - type: string
+                enum:
+                  - registered
+              - type: string
+                enum:
+                  - assigned
+              - type: string
+                enum:
+                  - in_progress
+              - type: string
+                enum:
+                  - awaiting_resident_verification
+              - type: string
+                enum:
+                  - resolved
+              - type: string
+                enum:
+                  - disputed
+          in: query
+          name: status
+          required: false
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - number
+                    - houseId
+                    - title
+                    - description
+                    - category
+                    - place
+                    - status
+                    - confirmationsCount
+                    - watchersCount
+                    - responsibleOrganization
+                    - version
+                    - isDemo
+                    - createdAt
+                    - updatedAt
+                    - history
+                    - attachments
+                  properties:
+                    id:
+                      format: uuid
+                      type: string
+                    number:
+                      minimum: 1
+                      type: integer
+                    houseId:
+                      format: uuid
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    category:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - lighting
+                        - type: string
+                          enum:
+                            - entrance
+                        - type: string
+                          enum:
+                            - elevator
+                        - type: string
+                          enum:
+                            - water
+                        - type: string
+                          enum:
+                            - heating
+                        - type: string
+                          enum:
+                            - yard
+                        - type: string
+                          enum:
+                            - other
+                    entrance:
+                      type: string
+                    place:
+                      type: string
+                    status:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - draft
+                        - type: string
+                          enum:
+                            - registered
+                        - type: string
+                          enum:
+                            - assigned
+                        - type: string
+                          enum:
+                            - in_progress
+                        - type: string
+                          enum:
+                            - awaiting_resident_verification
+                        - type: string
+                          enum:
+                            - resolved
+                        - type: string
+                          enum:
+                            - disputed
+                    confirmationsCount:
+                      minimum: 1
+                      type: integer
+                    watchersCount:
+                      minimum: 0
+                      type: integer
+                    responsibleOrganization:
+                      type: string
+                    assignee:
+                      type: string
+                    resultComment:
+                      type: string
+                    version:
+                      minimum: 1
+                      type: integer
+                    isDemo:
+                      type: boolean
+                    createdAt:
+                      format: date-time
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                    history:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - toStatus
+                          - actorName
+                          - createdAt
+                        properties:
+                          id:
+                            format: uuid
+                            type: string
+                          fromStatus:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - draft
+                              - type: string
+                                enum:
+                                  - registered
+                              - type: string
+                                enum:
+                                  - assigned
+                              - type: string
+                                enum:
+                                  - in_progress
+                              - type: string
+                                enum:
+                                  - awaiting_resident_verification
+                              - type: string
+                                enum:
+                                  - resolved
+                              - type: string
+                                enum:
+                                  - disputed
+                          toStatus:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - draft
+                              - type: string
+                                enum:
+                                  - registered
+                              - type: string
+                                enum:
+                                  - assigned
+                              - type: string
+                                enum:
+                                  - in_progress
+                              - type: string
+                                enum:
+                                  - awaiting_resident_verification
+                              - type: string
+                                enum:
+                                  - resolved
+                              - type: string
+                                enum:
+                                  - disputed
+                          comment:
+                            type: string
+                          actorName:
+                            type: string
+                          createdAt:
+                            format: date-time
+                            type: string
+                    attachments:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - kind
+                          - url
+                          - fileName
+                          - mimeType
+                          - createdAt
+                        properties:
+                          id:
+                            format: uuid
+                            type: string
+                          kind:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - problem
+                              - type: string
+                                enum:
+                                  - result
+                          url:
+                            type: string
+                          fileName:
+                            type: string
+                          mimeType:
+                            type: string
+                          createdAt:
+                            format: date-time
+                            type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+    post:
+      tags:
+        - cases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - category
+                - place
+              properties:
+                title:
+                  minLength: 5
+                  maxLength: 120
+                  type: string
+                description:
+                  minLength: 10
+                  maxLength: 2000
+                  type: string
+                category:
+                  anyOf:
+                    - type: string
+                      enum:
+                        - lighting
+                    - type: string
+                      enum:
+                        - entrance
+                    - type: string
+                      enum:
+                        - elevator
+                    - type: string
+                      enum:
+                        - water
+                    - type: string
+                      enum:
+                        - heating
+                    - type: string
+                      enum:
+                        - yard
+                    - type: string
+                      enum:
+                        - other
+                entrance:
+                  maxLength: 20
+                  type: string
+                place:
+                  minLength: 2
+                  maxLength: 120
+                  type: string
+                duplicateCaseId:
+                  format: uuid
+                  type: string
+      parameters:
+        - schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+          in: header
+          name: idempotency-key
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/cases/{caseId}:
+    get:
+      tags:
+        - cases
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/cases/deduplication:
+    post:
+      tags:
+        - cases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - description
+                - category
+                - place
+              properties:
+                description:
+                  minLength: 5
+                  maxLength: 2000
+                  type: string
+                category:
+                  anyOf:
+                    - type: string
+                      enum:
+                        - lighting
+                    - type: string
+                      enum:
+                        - entrance
+                    - type: string
+                      enum:
+                        - elevator
+                    - type: string
+                      enum:
+                        - water
+                    - type: string
+                      enum:
+                        - heating
+                    - type: string
+                      enum:
+                        - yard
+                    - type: string
+                      enum:
+                        - other
+                entrance:
+                  maxLength: 20
+                  type: string
+                place:
+                  minLength: 2
+                  maxLength: 120
+                  type: string
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - number
+                    - houseId
+                    - title
+                    - description
+                    - category
+                    - place
+                    - status
+                    - confirmationsCount
+                    - watchersCount
+                    - responsibleOrganization
+                    - version
+                    - isDemo
+                    - createdAt
+                    - updatedAt
+                    - history
+                    - attachments
+                  properties:
+                    id:
+                      format: uuid
+                      type: string
+                    number:
+                      minimum: 1
+                      type: integer
+                    houseId:
+                      format: uuid
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    category:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - lighting
+                        - type: string
+                          enum:
+                            - entrance
+                        - type: string
+                          enum:
+                            - elevator
+                        - type: string
+                          enum:
+                            - water
+                        - type: string
+                          enum:
+                            - heating
+                        - type: string
+                          enum:
+                            - yard
+                        - type: string
+                          enum:
+                            - other
+                    entrance:
+                      type: string
+                    place:
+                      type: string
+                    status:
+                      anyOf:
+                        - type: string
+                          enum:
+                            - draft
+                        - type: string
+                          enum:
+                            - registered
+                        - type: string
+                          enum:
+                            - assigned
+                        - type: string
+                          enum:
+                            - in_progress
+                        - type: string
+                          enum:
+                            - awaiting_resident_verification
+                        - type: string
+                          enum:
+                            - resolved
+                        - type: string
+                          enum:
+                            - disputed
+                    confirmationsCount:
+                      minimum: 1
+                      type: integer
+                    watchersCount:
+                      minimum: 0
+                      type: integer
+                    responsibleOrganization:
+                      type: string
+                    assignee:
+                      type: string
+                    resultComment:
+                      type: string
+                    version:
+                      minimum: 1
+                      type: integer
+                    isDemo:
+                      type: boolean
+                    createdAt:
+                      format: date-time
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                    history:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - toStatus
+                          - actorName
+                          - createdAt
+                        properties:
+                          id:
+                            format: uuid
+                            type: string
+                          fromStatus:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - draft
+                              - type: string
+                                enum:
+                                  - registered
+                              - type: string
+                                enum:
+                                  - assigned
+                              - type: string
+                                enum:
+                                  - in_progress
+                              - type: string
+                                enum:
+                                  - awaiting_resident_verification
+                              - type: string
+                                enum:
+                                  - resolved
+                              - type: string
+                                enum:
+                                  - disputed
+                          toStatus:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - draft
+                              - type: string
+                                enum:
+                                  - registered
+                              - type: string
+                                enum:
+                                  - assigned
+                              - type: string
+                                enum:
+                                  - in_progress
+                              - type: string
+                                enum:
+                                  - awaiting_resident_verification
+                              - type: string
+                                enum:
+                                  - resolved
+                              - type: string
+                                enum:
+                                  - disputed
+                          comment:
+                            type: string
+                          actorName:
+                            type: string
+                          createdAt:
+                            format: date-time
+                            type: string
+                    attachments:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - kind
+                          - url
+                          - fileName
+                          - mimeType
+                          - createdAt
+                        properties:
+                          id:
+                            format: uuid
+                            type: string
+                          kind:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - problem
+                              - type: string
+                                enum:
+                                  - result
+                          url:
+                            type: string
+                          fileName:
+                            type: string
+                          mimeType:
+                            type: string
+                          createdAt:
+                            format: date-time
+                            type: string
+  /api/cases/{caseId}/confirmations:
+    post:
+      tags:
+        - cases
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+  /api/cases/{caseId}/watchers:
+    post:
+      tags:
+        - cases
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+  /api/cases/{caseId}/status:
+    patch:
+      tags:
+        - case-workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+                - expectedVersion
+              properties:
+                status:
+                  anyOf:
+                    - type: string
+                      enum:
+                        - draft
+                    - type: string
+                      enum:
+                        - registered
+                    - type: string
+                      enum:
+                        - assigned
+                    - type: string
+                      enum:
+                        - in_progress
+                    - type: string
+                      enum:
+                        - awaiting_resident_verification
+                    - type: string
+                      enum:
+                        - resolved
+                    - type: string
+                      enum:
+                        - disputed
+                expectedVersion:
+                  minimum: 1
+                  type: integer
+                assignee:
+                  maxLength: 120
+                  type: string
+                comment:
+                  maxLength: 1000
+                  type: string
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/cases/{caseId}/attachments:
+    post:
+      tags:
+        - attachments
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - problem
+              - result
+          in: query
+          name: kind
+          required: true
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "413":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "415":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /webhooks/max:
+    post:
+      tags:
+        - MAX webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      parameters:
+        - schema:
+            type: string
+          in: header
+          name: x-max-bot-api-secret
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - duplicate
+                properties:
+                  ok:
+                    type: boolean
+                  duplicate:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /api/files/{key}:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: key
+          required: true
+      responses:
+        "200":
+          description: Default Response
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: auth
+  - name: cases
+  - name: case-workflow
+  - name: attachments
+  - name: MAX webhook
+  - name: health

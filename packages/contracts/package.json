@@ -1,0 +1,23 @@
+{
+  "name": "@domdelo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@domdelo/domain": "workspace:*",
+    "@sinclair/typebox": "0.34.52"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
+

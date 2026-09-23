@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.pnpm-store/
+.pnpm-cache/
+.pnpm-state/
+.pnpm/
+tmp/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+

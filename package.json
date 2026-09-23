@@ -1,0 +1,25 @@
+{
+  "name": "domdelo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP сервиса ДомДело для MAX",
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "24.21.0",
+    "pnpm": "11.25.0"
+  },
+  "scripts": {
+    "build:packages": "pnpm --filter @domdelo/domain build && pnpm --filter @domdelo/contracts build && pnpm --filter @domdelo/config build",
+    "build": "pnpm build:packages && pnpm --filter @domdelo/server build && pnpm --filter @domdelo/web build",
+    "dev:server": "pnpm build:packages && pnpm --filter @domdelo/server dev",
+    "dev:web": "pnpm build:packages && pnpm --filter @domdelo/web dev",
+    "typecheck": "pnpm build:packages && pnpm --filter @domdelo/server typecheck && pnpm --filter @domdelo/web typecheck",
+    "test": "pnpm build:packages && pnpm --filter @domdelo/domain test && pnpm --filter @domdelo/server test && pnpm --filter @domdelo/web test",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "db:generate": "pnpm --filter @domdelo/server db:generate",
+    "db:migrate": "pnpm --filter @domdelo/server db:migrate",
+    "db:seed": "pnpm --filter @domdelo/server db:seed",
+    "openapi:export": "pnpm build:packages && pnpm --filter @domdelo/server openapi:export"
+  }
+}

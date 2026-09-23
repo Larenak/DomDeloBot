@@ -1,0 +1,17 @@
+.git
+.gitignore
+.pnpm-store
+.pnpm-cache
+.pnpm-state
+.pnpm
+node_modules
+**/dist
+coverage
+tmp
+.env
+.env.*
+!.env.example
+docs/*.pdf
+playwright-report
+test-results
+

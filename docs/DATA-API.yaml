@@ -1,0 +1,99 @@
+schema_version: "1.0"
+solution: "ДомДело"
+api_version: "0.1.0"
+base_url: "${PUBLIC_BASE_URL}"
+openapi: "docs/openapi.yaml"
+data_mode: "synthetic_demo_house"
+data_notice: "Все seed-данные вымышлены и помечены is_demo=true"
+
+authentication:
+  max_session:
+    exchange_endpoint: "POST /api/auth/max"
+    input: "window.WebApp.initData"
+    validation: "HMAC-SHA256 по алгоритму MAX, auth_date не старше 15 минут"
+    request_header: "Authorization: Bearer <session>"
+  demo_only:
+    request_header: "X-Demo-User"
+    values:
+      - "resident-1"
+      - "resident-2"
+      - "dispatcher-1"
+      - "executor-1"
+
+test_entities:
+  house_id: "11111111-1111-4111-8111-111111111111"
+  address: "г. Казань, ул. Спортивная, 12"
+  cases:
+    - id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      number: 128
+      category: "lighting"
+    - id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      number: 127
+      category: "entrance"
+
+checks:
+  - method: GET
+    path: /health/live
+    auth: none
+    expected_status: 200
+    expected_content_type: application/json
+    expected_fields: [status]
+  - method: GET
+    path: /health/ready
+    auth: none
+    expected_status: 200
+    expected_content_type: application/json
+    expected_fields: [status]
+  - method: POST
+    path: /api/auth/max
+    auth: none
+    body_fields: [initData]
+    expected_statuses: [200, 401, 503]
+    expected_fields: [token, actor]
+  - method: GET
+    path: /api/cases
+    auth: resident_or_staff
+    query_fields: [status]
+    expected_status: 200
+    expected_content_type: application/json
+  - method: GET
+    path: /api/cases/{caseId}
+    auth: resident_or_staff_same_house
+    path_fields: [caseId]
+    expected_statuses: [200, 404]
+  - method: POST
+    path: /api/cases/deduplication
+    auth: resident_or_staff_same_house
+    body_fields: [description, category, entrance, place]
+    expected_status: 200
+  - method: POST
+    path: /api/cases
+    auth: resident_same_house
+    headers: [Idempotency-Key]
+    body_fields: [title, description, category, entrance, place, duplicateCaseId]
+    expected_statuses: [201, 400, 403]
+  - method: POST
+    path: /api/cases/{caseId}/confirmations
+    auth: resident_same_house
+    expected_statuses: [200, 403, 404]
+  - method: POST
+    path: /api/cases/{caseId}/watchers
+    auth: house_member
+    expected_statuses: [200, 404]
+  - method: PATCH
+    path: /api/cases/{caseId}/status
+    auth: role_by_transition
+    body_fields: [status, expectedVersion, assignee, comment]
+    expected_statuses: [200, 403, 404, 409]
+  - method: POST
+    path: /api/cases/{caseId}/attachments
+    auth: house_member
+    query_fields: [kind]
+    content_type: multipart/form-data
+    expected_statuses: [200, 400, 413, 415]
+  - method: POST
+    path: /webhooks/max
+    auth: X-Max-Bot-Api-Secret
+    expected_statuses: [200, 401]
+    idempotency: "update_type + message.body.mid, fallback SHA-256 payload"
+
