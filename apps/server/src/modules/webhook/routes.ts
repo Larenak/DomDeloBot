@@ -1,17 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-import type { MaxNotifier } from '../../services/max-notifier.js';
-
-type MaxUpdate = {
-  update_type?: string;
-  timestamp?: number;
-  message?: {
-    body?: { mid?: string; text?: string };
-    sender?: { user_id?: number };
-    recipient?: { chat_id?: number };
-  };
-};
+import type { BotNotifier } from '../../services/max-notifier.js';
+import { BotConversationService, type MaxUpdate } from './bot-conversation.js';
 
 function sameSecret(actual: string | undefined, expected: string): boolean {
   if (!actual) return false;
@@ -21,32 +12,16 @@ function sameSecret(actual: string | undefined, expected: string): boolean {
 }
 
 function eventId(update: MaxUpdate): string {
+  if (update.callback?.callback_id) return `${update.update_type || 'callback'}:${update.callback.callback_id}`;
   if (update.message?.body?.mid) return `${update.update_type || 'unknown'}:${update.message.body.mid}`;
   return createHash('sha256').update(JSON.stringify(update)).digest('hex');
 }
 
-async function processUpdate(update: MaxUpdate, notifier: MaxNotifier): Promise<void> {
-  const text = update.message?.body?.text?.trim().toLocaleLowerCase('ru-RU');
-  const userId = update.message?.sender?.user_id;
-  if (!userId) return;
-
-  if (update.update_type === 'bot_started' || text === '/start') {
-    await notifier.sendToUser(
-      userId,
-      '**ДомДело** превращает сообщение о проблеме в доме в прозрачное коллективное дело.\n\nНапишите «Создать дело», чтобы начать.',
-    );
-  } else if (text === 'создать дело') {
-    await notifier.sendToUser(
-      userId,
-      'Опишите проблему одним сообщением: что произошло и где. Затем прикрепите фотографию.',
-    );
-  }
-}
-
 export async function registerWebhookRoutes(
   app: FastifyInstance,
-  notifier: MaxNotifier,
+  notifier: BotNotifier,
 ): Promise<void> {
+  const conversations = new BotConversationService(app, notifier);
   app.post(
     '/webhooks/max',
     {
@@ -87,7 +62,7 @@ export async function registerWebhookRoutes(
       );
       if (inserted) {
         setImmediate(() => {
-          void processUpdate(update, notifier).catch((error) =>
+          void conversations.handle(update).catch((error) =>
             app.log.error({ error, eventId: id }, 'MAX update processing failed'),
           );
         });

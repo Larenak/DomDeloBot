@@ -4,11 +4,11 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import type { Database } from '../../db/client.js';
 import { cases, chatBindings, outboxEvents } from '../../db/schema.js';
-import type { MaxNotifier } from '../../services/max-notifier.js';
+import type { BotNotifier } from '../../services/max-notifier.js';
 
 export function startOutboxWorker(
   db: Database,
-  notifier: MaxNotifier,
+  notifier: BotNotifier,
   logger: FastifyBaseLogger,
 ): () => void {
   let stopped = false;
@@ -68,4 +68,3 @@ export function startOutboxWorker(
     clearInterval(timer);
   };
 }
-

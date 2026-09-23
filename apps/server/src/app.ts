@@ -19,7 +19,7 @@ import {
 } from './repositories/case-repository.js';
 import { InMemoryCaseRepository } from './repositories/in-memory-case-repository.js';
 import { PostgresCaseRepository } from './repositories/postgres-case-repository.js';
-import { MaxNotifier } from './services/max-notifier.js';
+import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
 import {
   InMemoryObjectStorage,
   S3ObjectStorage,
@@ -31,6 +31,7 @@ type BuildAppOptions = {
   config: AppConfig;
   caseRepository?: CaseRepository;
   objectStorage?: ObjectStorage;
+  notifier?: BotNotifier;
 };
 
 export async function buildApp(options: BuildAppOptions) {
@@ -48,7 +49,7 @@ export async function buildApp(options: BuildAppOptions) {
       : new S3ObjectStorage(options.config));
   app.decorate('objectStorage', objectStorage);
 
-  const notifier = new MaxNotifier(options.config.maxBotToken, options.config.maxApiBaseUrl);
+  const notifier = options.notifier || new MaxNotifier(options.config.maxBotToken, options.config.maxApiBaseUrl);
   let stopOutboxWorker: (() => void) | undefined;
 
   if (options.caseRepository) {

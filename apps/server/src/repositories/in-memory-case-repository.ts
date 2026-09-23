@@ -162,6 +162,16 @@ export class InMemoryCaseRepository implements CaseRepository {
   private readonly webhookEvents = new Set<string>();
   private readonly idempotencyKeys = new Map<string, string>();
 
+  constructor() {
+    for (const actorKey of ['resident-1', 'resident-2']) {
+      const actor = demoActors[actorKey]!;
+      this.confirmations.add(`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:${actor.id}`);
+      this.confirmations.add(`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:${actor.id}`);
+      this.watchers.add(`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:${actor.id}`);
+      this.watchers.add(`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:${actor.id}`);
+    }
+  }
+
   async ready(): Promise<boolean> {
     return true;
   }

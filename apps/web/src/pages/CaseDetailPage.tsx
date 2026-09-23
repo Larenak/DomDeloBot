@@ -62,6 +62,9 @@ export function CaseDetailPage() {
       {searchParams.get('created') ? (
         <div className="success-banner">✓ Дело зарегистрировано. Соседи уже могут присоединиться.</div>
       ) : null}
+      {searchParams.get('joined') ? (
+        <div className="success-banner">✓ Вы присоединились к делу. Теперь это одна коллективная проблема.</div>
+      ) : null}
 
       <section className="detail-card">
         <div className="detail-card__heading">
@@ -175,4 +178,3 @@ export function CaseDetailPage() {
     </main>
   );
 }
-

@@ -32,9 +32,9 @@ export function NewCasePage() {
   const duplicates = useMutation({ mutationFn: caseApi.duplicates });
   const createCase = useMutation({
     mutationFn: caseApi.create,
-    onSuccess: async (created) => {
+    onSuccess: async (created, variables) => {
       await queryClient.invalidateQueries({ queryKey: ['cases'] });
-      navigate(`/cases/${created.id}?created=1`);
+      navigate(`/cases/${created.id}?${variables.duplicateCaseId ? 'joined' : 'created'}=1`);
     },
   });
 
@@ -173,4 +173,3 @@ export function NewCasePage() {
     </main>
   );
 }
-
