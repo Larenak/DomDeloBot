@@ -14,6 +14,7 @@
     "build": "pnpm build:packages && pnpm --filter @domdelo/server build && pnpm --filter @domdelo/web build",
     "dev:server": "pnpm build:packages && pnpm --filter @domdelo/server dev",
     "dev:web": "pnpm build:packages && pnpm --filter @domdelo/web dev",
+    "dev:max": "node tools/start-max-local.mjs",
     "typecheck": "pnpm build:packages && pnpm --filter @domdelo/server typecheck && pnpm --filter @domdelo/web typecheck",
     "test": "pnpm build:packages && pnpm --filter @domdelo/domain test && pnpm --filter @domdelo/server test && pnpm --filter @domdelo/web test",
     "check": "pnpm typecheck && pnpm test && pnpm build",

@@ -2,11 +2,14 @@ export type AppConfig = {
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   publicBaseUrl: string;
+  maxMiniAppUrl?: string;
+  maxMiniAppBotUsername?: string;
   databaseUrl: string;
   maxApiBaseUrl: string;
   maxBotToken?: string;
   maxWebhookSecret?: string;
   maxDeliveryMode: 'webhook' | 'polling' | 'disabled';
+  maxPollingRemoveWebhookSubscriptions: boolean;
   sessionSecret: string;
   logLevel: string;
   demoMode: boolean;
@@ -38,6 +41,48 @@ function requiredInProduction(
   return value || fallback;
 }
 
+function normalizedBaseUrl(name: string, value: string, httpsOnly = false): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`Переменная окружения ${name} должна содержать корректный URL`);
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || (httpsOnly && url.protocol !== 'https:')) {
+    throw new Error(
+      httpsOnly
+        ? `Переменная окружения ${name} должна начинаться с https://`
+        : `Переменная окружения ${name} должна начинаться с http:// или https://`,
+    );
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error(`Переменная окружения ${name} не должна содержать логин, query-параметры или hash`);
+  }
+  if (httpsOnly && value.length > 1024) {
+    throw new Error(`Переменная окружения ${name} не должна быть длиннее 1024 символов`);
+  }
+  if (
+    httpsOnly &&
+    ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname.toLocaleLowerCase('en-US'))
+  ) {
+    throw new Error(
+      `Переменная окружения ${name} должна содержать публичный HTTPS-адрес; для локальной разработки используйте pnpm dev:max`,
+    );
+  }
+  return url.toString().replace(/\/$/u, '');
+}
+
+function normalizedBotUsername(value: string | undefined): string | undefined {
+  const username = value?.trim().replace(/^@/u, '');
+  if (!username) return undefined;
+  if (!/^[a-z0-9_]{3,64}$/iu.test(username)) {
+    throw new Error(
+      'Переменная окружения MAX_MINI_APP_BOT_USERNAME должна содержать username бота без ссылки',
+    );
+  }
+  return username;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = (env.NODE_ENV || 'development') as AppConfig['nodeEnv'];
   const storageMode = (env.STORAGE_MODE || 'postgres') as AppConfig['storageMode'];
@@ -53,15 +98,33 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error('MAX_DELIVERY_MODE должен быть webhook, polling или disabled');
   }
 
+  const publicBaseUrl = normalizedBaseUrl(
+    'PUBLIC_BASE_URL',
+    env.PUBLIC_BASE_URL || 'http://localhost:8080',
+  );
+  const explicitMiniAppUrl = env.MAX_MINI_APP_URL?.trim();
+  const miniAppUrlCandidate =
+    explicitMiniAppUrl || (publicBaseUrl.startsWith('https://') ? publicBaseUrl : undefined);
+  const maxMiniAppUrl = miniAppUrlCandidate
+    ? normalizedBaseUrl('MAX_MINI_APP_URL', miniAppUrlCandidate, true)
+    : undefined;
+  const maxMiniAppBotUsername = normalizedBotUsername(env.MAX_MINI_APP_BOT_USERNAME);
+
   return {
     nodeEnv,
     port: Number(env.PORT || 3000),
-    publicBaseUrl: env.PUBLIC_BASE_URL || 'http://localhost:8080',
+    publicBaseUrl,
+    ...(maxMiniAppUrl ? { maxMiniAppUrl } : {}),
+    ...(maxMiniAppBotUsername ? { maxMiniAppBotUsername } : {}),
     databaseUrl: env.DATABASE_URL || 'postgres://domdelo:domdelo@localhost:5432/domdelo',
     maxApiBaseUrl: env.MAX_API_BASE_URL || 'https://platform-api2.max.ru',
     ...(env.MAX_BOT_TOKEN ? { maxBotToken: env.MAX_BOT_TOKEN } : {}),
     ...(env.MAX_WEBHOOK_SECRET ? { maxWebhookSecret: env.MAX_WEBHOOK_SECRET } : {}),
     maxDeliveryMode,
+    maxPollingRemoveWebhookSubscriptions: booleanValue(
+      env.MAX_POLLING_REMOVE_WEBHOOKS,
+      false,
+    ),
     sessionSecret: requiredInProduction(
       'SESSION_SECRET',
       env.SESSION_SECRET,

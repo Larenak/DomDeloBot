@@ -12,6 +12,7 @@ const config = loadConfig({
   MAX_WEBHOOK_SECRET: 'test-webhook-secret',
   SESSION_SECRET: 'test-session-secret-with-enough-entropy',
   PUBLIC_BASE_URL: 'https://domdelo.test',
+  MAX_MINI_APP_BOT_USERNAME: 'domdelo_bot',
 });
 
 class RecordingNotifier implements BotNotifier {
@@ -74,6 +75,11 @@ describe('MAX bot conversation', () => {
     expect(notifier.messages[0]?.options?.buttons?.flat().map((button) => button.text)).toContain(
       'Создать дело',
     );
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'open_app',
+      text: 'Открыть ДомДело',
+      web_app: 'domdelo_bot',
+    });
 
     await webhook({
       update_type: 'message_created',
@@ -130,6 +136,60 @@ describe('MAX bot conversation', () => {
     expect(notifier.messages[0]?.options?.buttons?.flat()).toEqual([
       { type: 'message', text: 'Создать дело' },
     ]);
+  });
+
+  it('opens a local development URL as a regular link when it is not registered in MAX', async () => {
+    const notifier = new RecordingNotifier();
+    const localConfig = loadConfig({
+      NODE_ENV: 'test',
+      STORAGE_MODE: 'memory',
+      DEMO_MODE: 'true',
+      MAX_WEBHOOK_SECRET: 'test-webhook-secret',
+      SESSION_SECRET: 'test-session-secret-with-enough-entropy',
+      PUBLIC_BASE_URL: 'http://localhost:8080',
+      MAX_MINI_APP_URL: 'https://local-domdelo.trycloudflare.com/',
+    });
+    const app = await buildApp({ config: localConfig, notifier });
+    openedApps.push(app);
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: {
+        update_type: 'bot_started',
+        timestamp: 1,
+        chat_id: 777,
+        user: { user_id: 42, first_name: 'Анна', name: 'Анна' },
+      },
+    });
+
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'link',
+      text: 'Открыть ДомДело',
+      url: 'https://local-domdelo.trycloudflare.com',
+    });
+  });
+
+  it('rejects an HTTP address explicitly configured as a MAX mini-app URL', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'test',
+        STORAGE_MODE: 'memory',
+        MAX_MINI_APP_URL: 'http://localhost:5173',
+      }),
+    ).toThrow('MAX_MINI_APP_URL должна начинаться с https://');
+  });
+
+  it('rejects an HTTPS loopback address that a MAX phone cannot reach', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'test',
+        STORAGE_MODE: 'memory',
+        MAX_MINI_APP_URL: 'https://localhost:5173',
+      }),
+    ).toThrow('MAX_MINI_APP_URL должна содержать публичный HTTPS-адрес');
   });
 
   it('offers a duplicate and joins it with the MAX photo attached', async () => {
@@ -195,6 +255,12 @@ describe('MAX bot conversation', () => {
     await expect.poll(() => notifier.messages.length).toBe(3);
     expect(notifier.callbacks).toContain('join-callback');
     expect(notifier.messages[2]?.text).toContain('Вы присоединились к делу **№128**');
+    expect(notifier.messages[2]?.options?.buttons?.flat()).toContainEqual({
+      type: 'open_app',
+      text: 'Открыть карточку',
+      web_app: 'domdelo_bot',
+      payload: 'case_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    });
 
     const caseResponse = await app.inject({
       method: 'GET',

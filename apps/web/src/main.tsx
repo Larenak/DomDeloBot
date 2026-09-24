@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import App from './App.js';
 import { initializeMaxSession } from './api.js';
+import { pathFromMaxStartParam } from './max-launch.js';
 import './styles.css';
 
 const queryClient = new QueryClient({
@@ -19,6 +20,10 @@ const queryClient = new QueryClient({
 async function bootstrap() {
   window.WebApp?.ready?.();
   window.WebApp?.expand?.();
+  const launchPath = pathFromMaxStartParam(window.WebApp?.initDataUnsafe?.start_param);
+  if (launchPath && window.location.pathname === '/') {
+    window.history.replaceState(null, '', launchPath);
+  }
   await initializeMaxSession().catch(() => undefined);
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -34,4 +39,3 @@ async function bootstrap() {
 }
 
 void bootstrap();
-

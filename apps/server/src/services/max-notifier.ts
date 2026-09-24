@@ -4,7 +4,8 @@ import type { BotInfo, Update, UpdateType } from '@maxhub/max-bot-api/types';
 export type BotButton =
   | { type: 'callback'; text: string; payload: string }
   | { type: 'message'; text: string }
-  | { type: 'open_app'; text: string; web_app: string };
+  | { type: 'link'; text: string; url: string }
+  | { type: 'open_app'; text: string; web_app: string; payload?: string };
 
 export type BotMessageOptions = {
   buttons?: BotButton[][];
@@ -71,6 +72,7 @@ export class MaxNotifier implements BotNotifier {
   async startPolling(
     handleUpdate: (update: Update) => Promise<void>,
     handleError: PollingErrorHandler,
+    options: { removeWebhookSubscriptions?: boolean } = {},
   ): Promise<BotInfo> {
     if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
     if (this.pollingStarted) throw new Error('MAX Long Polling уже запущен');
@@ -81,6 +83,11 @@ export class MaxNotifier implements BotNotifier {
     const botInfo = await this.bot.api.getMyInfo();
     this.bot.botInfo = botInfo;
     const subscriptions = await this.bot.api.getSubscriptions();
+    if (subscriptions.length > 0 && !options.removeWebhookSubscriptions) {
+      throw new Error(
+        'У бота есть активные webhook-подписки. Используйте отдельного тестового бота или явно задайте MAX_POLLING_REMOVE_WEBHOOKS=true.',
+      );
+    }
     for (const subscription of subscriptions) {
       await this.bot.api.unsubscribe(subscription.url);
     }

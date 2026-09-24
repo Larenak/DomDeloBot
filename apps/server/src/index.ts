@@ -39,6 +39,7 @@ try {
           { error, updateType: update?.update_type },
           'MAX Long Polling update failed',
         ),
+      { removeWebhookSubscriptions: config.maxPollingRemoveWebhookSubscriptions },
     );
     app.log.info(
       { botId: botInfo.user_id, username: botInfo.username },

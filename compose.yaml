@@ -53,6 +53,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      MAX_MINI_APP_URL: ${MAX_MINI_APP_URL:-}
+      MAX_MINI_APP_BOT_USERNAME: ${MAX_MINI_APP_BOT_USERNAME:-}
       DATABASE_URL: postgres://domdelo:${POSTGRES_PASSWORD}@postgres:5432/domdelo
       MAX_API_BASE_URL: https://platform-api2.max.ru
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}

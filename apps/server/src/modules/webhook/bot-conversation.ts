@@ -152,9 +152,9 @@ export class BotConversationService {
 
     if (update.update_type === 'bot_started' || context.text === '/start') {
       const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
-      const publicAppUrl = this.publicAppUrl();
-      if (publicAppUrl) {
-        buttons.push([{ type: 'open_app', text: 'Открыть ДомДело', web_app: publicAppUrl }]);
+      const launchButton = this.miniAppButton('Открыть ДомДело');
+      if (launchButton) {
+        buttons.push([launchButton]);
       }
       await this.send(
         context,
@@ -268,15 +268,17 @@ export class BotConversationService {
       this.drafts.delete(this.key(context));
       if (context.callbackId) await this.notifier.answerCallback(context.callbackId, 'Готово');
       const joined = Boolean(duplicateCaseId);
-      const caseUrl = this.publicAppUrl(`/cases/${item.id}`);
+      const caseButton = this.miniAppButton(
+        'Открыть карточку',
+        `/cases/${item.id}`,
+        `case_${item.id}`,
+      );
       await this.send(
         context,
         joined
           ? `Вы присоединились к делу **№${item.number}**. Теперь проблему подтвердили ${item.confirmationsCount} жильцов.`
           : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`,
-        caseUrl
-          ? [[{ type: 'open_app', text: 'Открыть карточку', web_app: caseUrl }]]
-          : undefined,
+        caseButton ? [[caseButton]] : undefined,
       );
     } catch (error) {
       await this.send(
@@ -318,10 +320,23 @@ export class BotConversationService {
     return `${context.chatId || 'private'}:${context.userId}`;
   }
 
-  private publicAppUrl(path = ''): string | undefined {
-    const baseUrl = this.app.config.publicBaseUrl.replace(/\/$/u, '');
-    if (!baseUrl.startsWith('https://')) return undefined;
-    return `${baseUrl}${path}`;
+  private miniAppUrl(path = ''): string | undefined {
+    const baseUrl = this.app.config.maxMiniAppUrl;
+    return baseUrl ? `${baseUrl}${path}` : undefined;
+  }
+
+  private miniAppButton(text: string, path = '', payload?: string): BotButton | undefined {
+    const botUsername = this.app.config.maxMiniAppBotUsername;
+    if (botUsername) {
+      return {
+        type: 'open_app',
+        text,
+        web_app: botUsername,
+        ...(payload ? { payload } : {}),
+      };
+    }
+    const url = this.miniAppUrl(path);
+    return url ? { type: 'link', text, url } : undefined;
   }
 
   private async send(context: UpdateContext, message: string, buttons?: BotButton[][]): Promise<void> {

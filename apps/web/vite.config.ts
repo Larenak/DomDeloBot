@@ -6,7 +6,14 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    allowedHosts: ['.trycloudflare.com'],
+    allowedHosts: [
+      '.trycloudflare.com',
+      '.pinggy-free.link',
+      '.pinggy.net',
+      '.pinggy.link',
+      '.lhr.life',
+      '.localhost.run',
+    ],
     proxy: {
       '/api': 'http://localhost:3000',
       '/health': 'http://localhost:3000',

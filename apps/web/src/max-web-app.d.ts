@@ -1,5 +1,6 @@
 interface MaxWebApp {
   initData: string;
+  initDataUnsafe?: { start_param?: string };
   platform?: string;
   version?: string;
   deviceName?: string;
@@ -11,4 +12,3 @@ interface MaxWebApp {
 interface Window {
   WebApp?: MaxWebApp;
 }
-
