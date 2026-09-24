@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: true,
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/api': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
@@ -15,4 +17,3 @@ export default defineConfig({
     sourcemap: true,
   },
 });
-

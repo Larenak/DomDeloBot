@@ -6,6 +6,7 @@ export type AppConfig = {
   maxApiBaseUrl: string;
   maxBotToken?: string;
   maxWebhookSecret?: string;
+  maxDeliveryMode: 'webhook' | 'polling' | 'disabled';
   sessionSecret: string;
   logLevel: string;
   demoMode: boolean;
@@ -40,12 +41,16 @@ function requiredInProduction(
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = (env.NODE_ENV || 'development') as AppConfig['nodeEnv'];
   const storageMode = (env.STORAGE_MODE || 'postgres') as AppConfig['storageMode'];
+  const maxDeliveryMode = (env.MAX_DELIVERY_MODE || 'webhook') as AppConfig['maxDeliveryMode'];
 
   if (!['development', 'test', 'production'].includes(nodeEnv)) {
     throw new Error('NODE_ENV должен быть development, test или production');
   }
   if (!['postgres', 'memory'].includes(storageMode)) {
     throw new Error('STORAGE_MODE должен быть postgres или memory');
+  }
+  if (!['webhook', 'polling', 'disabled'].includes(maxDeliveryMode)) {
+    throw new Error('MAX_DELIVERY_MODE должен быть webhook, polling или disabled');
   }
 
   return {
@@ -56,6 +61,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     maxApiBaseUrl: env.MAX_API_BASE_URL || 'https://platform-api2.max.ru',
     ...(env.MAX_BOT_TOKEN ? { maxBotToken: env.MAX_BOT_TOKEN } : {}),
     ...(env.MAX_WEBHOOK_SECRET ? { maxWebhookSecret: env.MAX_WEBHOOK_SECRET } : {}),
+    maxDeliveryMode,
     sessionSecret: requiredInProduction(
       'SESSION_SECRET',
       env.SESSION_SECRET,
@@ -80,4 +86,3 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
   };
 }
-

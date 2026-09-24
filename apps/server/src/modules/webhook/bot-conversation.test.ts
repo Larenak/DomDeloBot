@@ -101,6 +101,37 @@ describe('MAX bot conversation', () => {
     expect(notifier.messages[2]?.text).toContain('Теперь прикрепите одну фотографию');
   });
 
+  it('does not send a localhost mini-app button to a phone', async () => {
+    const notifier = new RecordingNotifier();
+    const localConfig = loadConfig({
+      NODE_ENV: 'test',
+      STORAGE_MODE: 'memory',
+      DEMO_MODE: 'true',
+      MAX_WEBHOOK_SECRET: 'test-webhook-secret',
+      SESSION_SECRET: 'test-session-secret-with-enough-entropy',
+      PUBLIC_BASE_URL: 'http://localhost:8080',
+    });
+    const app = await buildApp({ config: localConfig, notifier });
+    openedApps.push(app);
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: {
+        update_type: 'bot_started',
+        timestamp: 1,
+        chat_id: 777,
+        user: { user_id: 42, first_name: 'Анна', name: 'Анна' },
+      },
+    });
+
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toEqual([
+      { type: 'message', text: 'Создать дело' },
+    ]);
+  });
+
   it('offers a duplicate and joins it with the MAX photo attached', async () => {
     vi.stubGlobal(
       'fetch',

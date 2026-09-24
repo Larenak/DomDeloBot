@@ -11,7 +11,7 @@ function sameSecret(actual: string | undefined, expected: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function eventId(update: MaxUpdate): string {
+export function maxEventId(update: MaxUpdate): string {
   if (update.callback?.callback_id) return `${update.update_type || 'callback'}:${update.callback.callback_id}`;
   if (update.message?.body?.mid) return `${update.update_type || 'unknown'}:${update.message.body.mid}`;
   return createHash('sha256').update(JSON.stringify(update)).digest('hex');
@@ -54,7 +54,7 @@ export async function registerWebhookRoutes(
       }
 
       const update = request.body as MaxUpdate;
-      const id = eventId(update);
+      const id = maxEventId(update);
       const inserted = await app.caseRepository.saveWebhookEvent(
         id,
         update.update_type || 'unknown',

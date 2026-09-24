@@ -81,6 +81,28 @@ pnpm dev:web
 4. Создайте подписку `POST https://platform-api2.max.ru/subscriptions` на `${PUBLIC_BASE_URL}/webhooks/max`.
 5. Мини-приложение подключите к тому же боту. Frontend передаёт только `window.WebApp.initData`; `MAX_BOT_TOKEN` во frontend не попадает.
 
+### Живой тест чат-бота без публичного домена
+
+Для разработки MAX разрешает Long Polling. Он позволяет писать боту с телефона без Docker,
+webhook и публичного HTTPS. Данные такого теста хранятся только в памяти и исчезают после
+остановки процесса:
+
+```powershell
+$env:NODE_EXTRA_CA_CERTS=(Resolve-Path 'infra/certs/russian_trusted_root_ca.cer').Path
+$env:STORAGE_MODE='memory'
+$env:DEMO_MODE='true'
+$env:MAX_DELIVERY_MODE='polling'
+pnpm dev:server
+```
+
+Long Polling и webhook одновременно не используются. При запуске polling существующие
+webhook-подписки этого бота удаляются. Если `PUBLIC_BASE_URL` не начинается с `https://`,
+бот не показывает на телефоне кнопку мини-приложения с недоступным локальным адресом.
+
+Корневой сертификат Минцифры для подключения к MAX хранится локально в
+`infra/certs/russian_trusted_root_ca.cer`; источник — официальный ресурс Госуслуг
+`https://gu-st.ru/content/Other/doc/russian_trusted_root_ca.cer`.
+
 Актуальность MAX API проверена 23.09.2026: используется `platform-api2.max.ru`, webhook HTTPS и заголовок `X-Max-Bot-Api-Secret`.
 
 ## Проверки качества

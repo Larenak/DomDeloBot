@@ -151,13 +151,15 @@ export class BotConversationService {
     const key = this.key(context);
 
     if (update.update_type === 'bot_started' || context.text === '/start') {
+      const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
+      const publicAppUrl = this.publicAppUrl();
+      if (publicAppUrl) {
+        buttons.push([{ type: 'open_app', text: 'Открыть ДомДело', web_app: publicAppUrl }]);
+      }
       await this.send(
         context,
         '**ДомДело** превращает сообщение о проблеме в доме в прозрачное коллективное дело.\n\nСоздайте дело здесь или откройте мини-приложение.',
-        [
-          [{ type: 'message', text: 'Создать дело' }],
-          [{ type: 'open_app', text: 'Открыть ДомДело', web_app: this.app.config.publicBaseUrl }],
-        ],
+        buttons,
       );
       return;
     }
@@ -266,12 +268,15 @@ export class BotConversationService {
       this.drafts.delete(this.key(context));
       if (context.callbackId) await this.notifier.answerCallback(context.callbackId, 'Готово');
       const joined = Boolean(duplicateCaseId);
+      const caseUrl = this.publicAppUrl(`/cases/${item.id}`);
       await this.send(
         context,
         joined
           ? `Вы присоединились к делу **№${item.number}**. Теперь проблему подтвердили ${item.confirmationsCount} жильцов.`
           : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`,
-        [[{ type: 'open_app', text: 'Открыть карточку', web_app: `${this.app.config.publicBaseUrl.replace(/\/$/u, '')}/cases/${item.id}` }]],
+        caseUrl
+          ? [[{ type: 'open_app', text: 'Открыть карточку', web_app: caseUrl }]]
+          : undefined,
       );
     } catch (error) {
       await this.send(
@@ -311,6 +316,12 @@ export class BotConversationService {
 
   private key(context: UpdateContext): string {
     return `${context.chatId || 'private'}:${context.userId}`;
+  }
+
+  private publicAppUrl(path = ''): string | undefined {
+    const baseUrl = this.app.config.publicBaseUrl.replace(/\/$/u, '');
+    if (!baseUrl.startsWith('https://')) return undefined;
+    return `${baseUrl}${path}`;
   }
 
   private async send(context: UpdateContext, message: string, buttons?: BotButton[][]): Promise<void> {
