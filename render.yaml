@@ -24,6 +24,11 @@ services:
           name: domdelo-max
           type: web
           envVarKey: RENDER_EXTERNAL_URL
+      - key: MAX_MINI_APP_URL
+        fromService:
+          name: domdelo-max
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: DATABASE_URL
         fromDatabase:
           name: domdelo-db
