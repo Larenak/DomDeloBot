@@ -52,9 +52,9 @@ function AppShell({ demoMode }: { demoMode: boolean }) {
       </header>
 
       <Routes>
-        <Route path="/" element={<CasesPage />} />
+        <Route path="/" element={<CasesPage demoMode={demoMode} />} />
         <Route path="/new" element={<NewCasePage />} />
-        <Route path="/cases/:caseId" element={<CaseDetailPage />} />
+        <Route path="/cases/:caseId" element={<CaseDetailPage demoMode={demoMode} />} />
         <Route path="/dispatcher" element={<DispatcherPage />} />
         <Route path="*" element={<Navigate to={isWorkRole ? '/dispatcher' : '/'} replace />} />
       </Routes>

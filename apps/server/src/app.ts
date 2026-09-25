@@ -65,7 +65,12 @@ export async function buildApp(options: BuildAppOptions) {
   } else if (options.config.storageMode === 'memory') {
     app.decorate('caseRepository', new InMemoryCaseRepository());
   } else {
-    app.decorate('caseRepository', new PostgresCaseRepository(database!.db, objectStorage, options.config.hackathonHouseId));
+    app.decorate('caseRepository', new PostgresCaseRepository(
+      database!.db,
+      objectStorage,
+      options.config.hackathonHouseId,
+      options.config.demoMode,
+    ));
     stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
   }
   if (database) {

@@ -12,7 +12,7 @@ const actionLabels = {
   disputed: 'Проблема осталась',
 } as const;
 
-export function CaseDetailPage() {
+export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
   const { caseId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -74,7 +74,7 @@ export function CaseDetailPage() {
             </span>
             <span className="case-number">Дело №{item.number}</span>
           </div>
-          {item.isDemo ? <span className="demo-chip">Демо-данные</span> : null}
+          {demoMode && item.isDemo ? <span className="demo-chip">Демо-данные</span> : null}
         </div>
         <h1>{item.title}</h1>
         <p className="detail-description">{item.description}</p>

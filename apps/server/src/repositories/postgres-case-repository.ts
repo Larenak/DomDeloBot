@@ -54,6 +54,7 @@ export class PostgresCaseRepository implements CaseRepository {
     private readonly db: Database,
     private readonly objectStorage: ObjectStorage,
     private readonly hackathonHouseId?: string,
+    private readonly demoMode = true,
   ) {}
 
   async ready(): Promise<boolean> {
@@ -165,7 +166,7 @@ export class PostgresCaseRepository implements CaseRepository {
           normalizedText: normalized(`${input.place} ${input.description}`),
           status: 'registered',
           responsibleOrganization: routeResponsibleOrganization(input.category),
-          isDemo: true,
+          isDemo: this.demoMode,
         })
         .returning({ id: cases.id });
       if (!inserted) throw new Error('Не удалось создать дело');

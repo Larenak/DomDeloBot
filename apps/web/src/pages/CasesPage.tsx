@@ -5,7 +5,7 @@ import { caseApi } from '../api.js';
 import { CaseCard } from '../components/CaseCard.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateViews.js';
 
-export function CasesPage() {
+export function CasesPage({ demoMode }: { demoMode: boolean }) {
   const query = useQuery({ queryKey: ['cases'], queryFn: caseApi.list });
 
   return (
@@ -24,7 +24,7 @@ export function CasesPage() {
       <section className="section-heading">
         <div>
           <h2>Открытые дела</h2>
-          <p>Демо-данные одного дома</p>
+          {demoMode ? <p>Демо-данные одного дома</p> : null}
         </div>
         {query.data ? <span className="count-badge">{query.data.length}</span> : null}
       </section>
@@ -44,4 +44,3 @@ export function CasesPage() {
     </main>
   );
 }
-
