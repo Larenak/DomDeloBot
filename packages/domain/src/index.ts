@@ -16,7 +16,7 @@ export type UserRole = (typeof userRoles)[number];
 export type WorkflowActor = {
   id: string;
   role: UserRole;
-  houseId: string;
+  houseId?: string;
 };
 
 export class WorkflowError extends Error {
@@ -74,4 +74,3 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   resolved: 'Результат подтверждён',
   disputed: 'Результат оспорен',
 };
-

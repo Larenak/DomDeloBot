@@ -15,6 +15,11 @@ components:
       name: X-Demo-User
   schemas: {}
 paths:
+  /api/public-config:
+    get:
+      responses:
+        "200":
+          description: Default Response
   /api/auth/max:
     post:
       tags:
@@ -53,6 +58,240 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/me/houses:
+    get:
+      tags:
+        - houses
+      security: &a1
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  onboardingRequired:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+    post:
+      tags:
+        - houses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - city
+                - street
+                - building
+              properties:
+                city:
+                  minLength: 2
+                  maxLength: 100
+                  pattern: .*[A-Za-zА-Яа-яЁё0-9].*
+                  type: string
+                street:
+                  minLength: 2
+                  maxLength: 120
+                  pattern: .*[A-Za-zА-Яа-яЁё0-9].*
+                  type: string
+                building:
+                  minLength: 1
+                  maxLength: 30
+                  pattern: .*[A-Za-zА-Яа-яЁё0-9].*
+                  type: string
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  onboardingRequired:
+                    type: boolean
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/me/houses/{houseId}/select:
+    post:
+      tags:
+        - houses
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: houseId
+          required: true
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  onboardingRequired:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/cases:
     get:
       tags:
@@ -2199,6 +2438,7 @@ servers:
   - url: http://localhost:8080
 tags:
   - name: auth
+  - name: houses
   - name: cases
   - name: case-workflow
   - name: attachments

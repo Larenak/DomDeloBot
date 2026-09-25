@@ -1,18 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
-import { caseApi } from '../api.js';
+import { caseApi, houseApi } from '../api.js';
 import { CaseCard } from '../components/CaseCard.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateViews.js';
 
-export function CasesPage({ demoMode }: { demoMode: boolean }) {
+export function CasesPage() {
   const query = useQuery({ queryKey: ['cases'], queryFn: caseApi.list });
+  const houses = useQuery({ queryKey: ['house-context'], queryFn: houseApi.context });
+  const activeHouse = houses.data?.houses.find((house) => house.isActive);
 
   return (
     <main className="page">
       <section className="hero">
         <div>
-          <span className="eyebrow">Дом на ул. Спортивной, 12</span>
+          <span className="eyebrow">{activeHouse?.address || 'Выбранный дом'}</span>
           <h1>Дела нашего дома</h1>
           <p>Одна проблема — одно прозрачное дело до подтверждённого результата.</p>
         </div>
@@ -24,7 +26,7 @@ export function CasesPage({ demoMode }: { demoMode: boolean }) {
       <section className="section-heading">
         <div>
           <h2>Открытые дела</h2>
-          {demoMode ? <p>Демо-данные одного дома</p> : null}
+          <p>Обращения относятся только к выбранному адресу</p>
         </div>
         {query.data ? <span className="count-badge">{query.data.length}</span> : null}
       </section>

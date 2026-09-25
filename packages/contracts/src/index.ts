@@ -29,6 +29,29 @@ export const CaseCategorySchema = Type.Union([
 
 export type CaseCategory = Static<typeof CaseCategorySchema>;
 
+export const HouseSchema = Type.Object({
+  id: Type.String({ format: 'uuid' }),
+  address: Type.String(),
+  isActive: Type.Boolean(),
+  isDemo: Type.Boolean(),
+});
+
+export const HouseContextSchema = Type.Object({
+  houses: Type.Array(HouseSchema),
+  activeHouseId: Type.Optional(Type.String({ format: 'uuid' })),
+  onboardingRequired: Type.Boolean(),
+});
+
+export const AddHouseSchema = Type.Object({
+  city: Type.String({ minLength: 2, maxLength: 100, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
+  street: Type.String({ minLength: 2, maxLength: 120, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
+  building: Type.String({ minLength: 1, maxLength: 30, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
+});
+
+export type HouseDto = Static<typeof HouseSchema>;
+export type HouseContextDto = Static<typeof HouseContextSchema>;
+export type AddHouseInput = Static<typeof AddHouseSchema>;
+
 export const CaseHistoryItemSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   fromStatus: Type.Optional(CaseStatusSchema),
@@ -105,4 +128,3 @@ export const ErrorSchema = Type.Object({
   message: Type.String(),
   requestId: Type.Optional(Type.String()),
 });
-

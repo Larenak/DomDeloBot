@@ -10,6 +10,7 @@ if (config.hackathonHouseId) {
     await db.insert(houses).values({
       id: config.hackathonHouseId,
       address: process.env.HACKATHON_HOUSE_ADDRESS || 'Демонстрационный дом',
+      normalizedAddress: `legacy|${config.hackathonHouseId}`,
       isDemo: true,
     }).onConflictDoNothing();
   } finally {

@@ -1,7 +1,9 @@
 import type {
+  AddHouseInput,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 
@@ -120,4 +122,16 @@ export const caseApi = {
       body,
     });
   },
+};
+
+export const houseApi = {
+  context: () => api<HouseContextDto>('/api/me/houses'),
+  add: (input: AddHouseInput) =>
+    api<HouseContextDto>('/api/me/houses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  select: (houseId: string) =>
+    api<HouseContextDto>(`/api/me/houses/${houseId}/select`, { method: 'POST' }),
 };

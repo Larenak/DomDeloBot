@@ -151,20 +151,40 @@ export class BotConversationService {
     const key = this.key(context);
 
     if (update.update_type === 'bot_started' || context.text === '/start') {
-      const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
       const launchButton = this.miniAppButton('Открыть ДомДело');
-      if (launchButton) {
-        buttons.push([launchButton]);
+      const actor = await this.resolveActor(context);
+      const houseContext = await this.app.caseRepository.getHouseContext(actor);
+      if (houseContext.onboardingRequired) {
+        await this.send(
+          context,
+          '**Сначала добавьте адрес дома.**\n\nДомДело разделяет обращения по адресам. Откройте мини-приложение и добавьте хотя бы один дом — после этого создание дел станет доступно.',
+          launchButton ? [[launchButton]] : undefined,
+        );
+        return;
       }
+      const activeHouse = houseContext.houses.find((house) => house.isActive);
+      const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
+      if (launchButton) buttons.push([launchButton]);
       await this.send(
         context,
-        '**ДомДело** превращает сообщение о проблеме в доме в прозрачное коллективное дело.\n\nСоздайте дело здесь или откройте мини-приложение.',
+        `**ДомДело** превращает сообщение о проблеме в доме в прозрачное коллективное дело.\n\n${activeHouse ? `Текущий дом: **${escapeMarkdown(activeHouse.address)}**.\n\n` : ''}Создайте дело здесь или откройте мини-приложение.`,
         buttons,
       );
       return;
     }
 
     if (context.text === 'создать дело') {
+      const actor = await this.resolveActor(context);
+      const houseContext = await this.app.caseRepository.getHouseContext(actor);
+      if (houseContext.onboardingRequired) {
+        const launchButton = this.miniAppButton('Добавить адрес');
+        await this.send(
+          context,
+          'Сначала добавьте адрес дома в мини-приложении.',
+          launchButton ? [[launchButton]] : undefined,
+        );
+        return;
+      }
       this.drafts.set(key, { state: 'awaiting_description', idempotencyKey: randomUUID() });
       await this.send(
         context,

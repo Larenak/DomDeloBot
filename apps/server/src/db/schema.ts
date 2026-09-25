@@ -33,6 +33,18 @@ export const caseStatusEnum = pgEnum('case_status', [
 
 export const attachmentKindEnum = pgEnum('attachment_kind', ['problem', 'result']);
 
+export const houses = pgTable(
+  'houses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    address: text('address').notNull(),
+    normalizedAddress: text('normalized_address').notNull(),
+    isDemo: boolean('is_demo').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('houses_normalized_address_unique').on(table.normalizedAddress)],
+);
+
 export const users = pgTable(
   'users',
   {
@@ -40,18 +52,12 @@ export const users = pgTable(
     maxUserId: bigint('max_user_id', { mode: 'bigint' }),
     displayName: text('display_name').notNull(),
     role: userRoleEnum('role').notNull().default('resident'),
+    activeHouseId: uuid('active_house_id'),
     isDemo: boolean('is_demo').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex('users_max_user_id_unique').on(table.maxUserId)],
 );
-
-export const houses = pgTable('houses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  address: text('address').notNull(),
-  isDemo: boolean('is_demo').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
 
 export const houseMembers = pgTable(
   'house_members',
@@ -62,6 +68,8 @@ export const houseMembers = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    isFavorite: boolean('is_favorite').notNull().default(false),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.houseId, table.userId] })],

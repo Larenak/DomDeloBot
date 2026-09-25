@@ -11,9 +11,11 @@ import { createDatabase } from './db/client.js';
 import { registerAuth } from './modules/auth/plugin.js';
 import { registerCaseRoutes } from './modules/cases/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { registerHouseRoutes } from './modules/houses/routes.js';
 import { startOutboxWorker } from './modules/outbox/worker.js';
 import { registerWebhookRoutes } from './modules/webhook/routes.js';
 import {
+  AddressOnboardingRequiredError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -68,7 +70,6 @@ export async function buildApp(options: BuildAppOptions) {
     app.decorate('caseRepository', new PostgresCaseRepository(
       database!.db,
       objectStorage,
-      options.config.hackathonHouseId,
       options.config.demoMode,
     ));
     stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
@@ -98,6 +99,7 @@ export async function buildApp(options: BuildAppOptions) {
       servers: [{ url: options.config.publicBaseUrl }],
       tags: [
         { name: 'auth' },
+        { name: 'houses' },
         { name: 'cases' },
         { name: 'case-workflow' },
         { name: 'attachments' },
@@ -116,6 +118,7 @@ export async function buildApp(options: BuildAppOptions) {
 
   await registerAuth(app);
   await registerHealthRoutes(app);
+  await registerHouseRoutes(app);
   await registerCaseRoutes(app);
   await registerWebhookRoutes(app, notifier);
 
@@ -152,6 +155,13 @@ export async function buildApp(options: BuildAppOptions) {
     const requestId = request.id;
     if (error instanceof NotFoundError) {
       return reply.code(404).send({ error: 'not_found', message: error.message, requestId });
+    }
+    if (error instanceof AddressOnboardingRequiredError) {
+      return reply.code(403).send({
+        error: 'address_required',
+        message: error.message,
+        requestId,
+      });
     }
     if (error instanceof ForbiddenError || typedError.name === 'WorkflowError') {
       return reply.code(403).send({ error: 'forbidden', message: typedError.message, requestId });

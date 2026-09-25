@@ -16,12 +16,12 @@ export async function registerAuth(app: FastifyInstance): Promise<void> {
 
     const authorization = request.headers.authorization;
     const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : '';
-    const actor = token ? verifySessionToken(token, app.config.sessionSecret) : null;
-    if (!actor) {
+    const sessionActor = token ? verifySessionToken(token, app.config.sessionSecret) : null;
+    if (!sessionActor) {
       await reply.code(401).send({ error: 'unauthorized', message: 'Требуется авторизация' });
       return;
     }
-    request.actor = actor;
+    request.actor = await app.caseRepository.refreshActor(sessionActor);
   });
 
   app.post(

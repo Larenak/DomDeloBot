@@ -33,11 +33,10 @@ export function verifySessionToken(token: string, secret: string): Authenticated
     return {
       id: payload.id,
       role: payload.role,
-      houseId: payload.houseId,
       displayName: payload.displayName,
+      ...(payload.houseId ? { houseId: payload.houseId } : {}),
     };
   } catch {
     return null;
   }
 }
-

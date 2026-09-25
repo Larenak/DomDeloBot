@@ -1,7 +1,9 @@
 import type {
+  AddHouseInput,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 import {
@@ -13,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedActor } from '../types.js';
 import {
+  AddressOnboardingRequiredError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -26,25 +29,21 @@ export const demoActors: Record<string, AuthenticatedActor> = {
   'resident-1': {
     id: '22222222-2222-4222-8222-222222222222',
     role: 'resident',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Анна Петрова',
   },
   'resident-2': {
     id: '33333333-3333-4333-8333-333333333333',
     role: 'resident',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Михаил Соколов',
   },
   'dispatcher-1': {
     id: '44444444-4444-4444-8444-444444444444',
     role: 'dispatcher',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Елена, диспетчер УК',
   },
   'executor-1': {
     id: '55555555-5555-4555-8555-555555555555',
     role: 'executor',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Илья, электрик',
   },
 };
@@ -155,12 +154,49 @@ function ensureResidentOrAdmin(actor: AuthenticatedActor): void {
   }
 }
 
+function activeHouseId(actor: AuthenticatedActor): string {
+  if (!actor.houseId) {
+    throw new AddressOnboardingRequiredError('Сначала добавьте адрес дома');
+  }
+  return actor.houseId;
+}
+
+function normalizedAddressPart(value: string): string {
+  return value
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/gu, 'е')
+    .replace(/[^a-zа-я0-9]/giu, '');
+}
+
+function preparedAddress(input: AddHouseInput) {
+  const city = input.city.trim();
+  const street = input.street.trim();
+  const building = input.building.trim();
+  return {
+    address: `г. ${city}, ${street}, д. ${building}`,
+    normalizedAddress: [city, street, building].map(normalizedAddressPart).join('|'),
+  };
+}
+
 export class InMemoryCaseRepository implements CaseRepository {
   private readonly items = seedCases();
   private readonly confirmations = new Set<string>();
   private readonly watchers = new Set<string>();
   private readonly webhookEvents = new Set<string>();
   private readonly idempotencyKeys = new Map<string, string>();
+  private readonly houses = new Map([
+    [
+      DEMO_HOUSE_ID,
+      {
+        id: DEMO_HOUSE_ID,
+        address: 'г. Казань, ул. Спортивная, д. 12',
+        normalizedAddress: 'казань|спортивная|12',
+        isDemo: true,
+      },
+    ],
+  ]);
+  private readonly favoriteHouses = new Map<string, Set<string>>();
+  private readonly maxActors = new Map<bigint, AuthenticatedActor>();
 
   constructor() {
     for (const actorKey of ['resident-1', 'resident-2']) {
@@ -176,13 +212,67 @@ export class InMemoryCaseRepository implements CaseRepository {
     return true;
   }
 
-  async resolveMaxUser(): Promise<AuthenticatedActor> {
-    return demoActors['resident-1']!;
+  async refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor> {
+    return actor;
+  }
+
+  async resolveMaxUser(input: { maxUserId: bigint; displayName: string }): Promise<AuthenticatedActor> {
+    const existing = this.maxActors.get(input.maxUserId);
+    if (existing) return existing;
+    const actor: AuthenticatedActor = {
+      id: randomUUID(),
+      role: 'resident',
+      displayName: input.displayName,
+    };
+    this.maxActors.set(input.maxUserId, actor);
+    return actor;
+  }
+
+  async getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto> {
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    const items = [...favorites]
+      .map((id) => this.houses.get(id))
+      .filter((house): house is NonNullable<typeof house> => Boolean(house));
+    return {
+      houses: items.map((house) => ({
+        id: house.id,
+        address: house.address,
+        isActive: house.id === actor.houseId,
+        isDemo: house.isDemo,
+      })),
+      ...(actor.houseId && favorites.has(actor.houseId) ? { activeHouseId: actor.houseId } : {}),
+      onboardingRequired: items.length === 0,
+    };
+  }
+
+  async addHouse(actor: AuthenticatedActor, input: AddHouseInput): Promise<HouseContextDto> {
+    const prepared = preparedAddress(input);
+    let house = [...this.houses.values()].find(
+      (candidate) => candidate.normalizedAddress === prepared.normalizedAddress,
+    );
+    if (!house) {
+      house = { id: randomUUID(), ...prepared, isDemo: false };
+      this.houses.set(house.id, house);
+    }
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    favorites.add(house.id);
+    this.favoriteHouses.set(actor.id, favorites);
+    actor.houseId = house.id;
+    return this.getHouseContext(actor);
+  }
+
+  async selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    if (!this.favoriteHouses.get(actor.id)?.has(houseId)) {
+      throw new ForbiddenError('Сначала добавьте этот адрес в «Мои дома»');
+    }
+    actor.houseId = houseId;
+    return this.getHouseContext(actor);
   }
 
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
+    const houseId = activeHouseId(actor);
     return this.items
-      .filter((item) => item.houseId === actor.houseId && (!status || item.status === status))
+      .filter((item) => item.houseId === houseId && (!status || item.status === status))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map(cloneCase);
   }
@@ -196,10 +286,11 @@ export class InMemoryCaseRepository implements CaseRepository {
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
   ): Promise<CaseDto[]> {
+    const houseId = activeHouseId(actor);
     return this.items
       .filter(
         (item) =>
-          item.houseId === actor.houseId &&
+          item.houseId === houseId &&
           openCaseStatuses.includes(item.status) &&
           item.category === input.category &&
           (!input.entrance || !item.entrance || item.entrance === input.entrance),
@@ -224,6 +315,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     idempotencyKey: string,
   ): Promise<CaseDto> {
     ensureResidentOrAdmin(actor);
+    const houseId = activeHouseId(actor);
     if (input.duplicateCaseId) {
       return this.confirmCase(actor, input.duplicateCaseId);
     }
@@ -236,7 +328,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     const item: CaseDto = {
       id: randomUUID(),
       number: Math.max(...this.items.map((candidate) => candidate.number)) + 1,
-      houseId: actor.houseId,
+      houseId,
       title: input.title,
       description: input.description,
       category: input.category,
@@ -349,8 +441,9 @@ export class InMemoryCaseRepository implements CaseRepository {
   }
 
   private getMutable(actor: AuthenticatedActor, caseId: string): CaseDto {
+    const houseId = activeHouseId(actor);
     const item = this.items.find((candidate) => candidate.id === caseId);
-    if (!item || item.houseId !== actor.houseId) {
+    if (!item || item.houseId !== houseId) {
       throw new NotFoundError('Дело не найдено');
     }
     return item;

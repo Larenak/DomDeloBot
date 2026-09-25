@@ -30,7 +30,15 @@ const { client, db } = createDatabase(config);
 
 try {
   await db.transaction(async (tx) => {
-    await tx.insert(houses).values({ id: houseId, address: 'г. Казань, ул. Спортивная, 12', isDemo: true }).onConflictDoNothing();
+    await tx
+      .insert(houses)
+      .values({
+        id: houseId,
+        address: 'г. Казань, ул. Спортивная, д. 12',
+        normalizedAddress: 'казань|спортивная|12',
+        isDemo: true,
+      })
+      .onConflictDoNothing();
     await tx.insert(users).values(demoUsers.map((user) => ({ ...user, isDemo: true }))).onConflictDoNothing();
     await tx
       .insert(houseMembers)
@@ -154,4 +162,3 @@ try {
 } finally {
   await client.end();
 }
-

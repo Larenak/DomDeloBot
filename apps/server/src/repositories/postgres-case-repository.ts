@@ -1,8 +1,10 @@
 import type {
+  AddHouseInput,
   CaseCategory,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 import { assertTransitionAllowed, type CaseStatus } from '@domdelo/domain';
@@ -12,13 +14,13 @@ import type { Database } from '../db/client.js';
 import {
   assignments,
   auditLog,
-  chatBindings,
   caseAttachments,
   caseConfirmations,
   cases,
   caseStatusHistory,
   caseWatchers,
   houseMembers,
+  houses,
   idempotencyKeys,
   outboxEvents,
   processedWebhookEvents,
@@ -27,6 +29,7 @@ import {
 import type { AuthenticatedActor } from '../types.js';
 import type { ObjectStorage } from '../services/object-storage.js';
 import {
+  AddressOnboardingRequiredError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -43,6 +46,30 @@ function normalized(value: string): string {
     .trim();
 }
 
+function normalizedAddressPart(value: string): string {
+  return value
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/gu, 'е')
+    .replace(/[^a-zа-я0-9]/giu, '');
+}
+
+function houseAddress(input: AddHouseInput): { address: string; normalizedAddress: string } {
+  const city = input.city.trim();
+  const street = input.street.trim();
+  const building = input.building.trim();
+  return {
+    address: `г. ${city}, ${street}, д. ${building}`,
+    normalizedAddress: [city, street, building].map(normalizedAddressPart).join('|'),
+  };
+}
+
+function activeHouseId(actor: AuthenticatedActor): string {
+  if (!actor.houseId) {
+    throw new AddressOnboardingRequiredError('Сначала добавьте адрес дома');
+  }
+  return actor.houseId;
+}
+
 function ensureResident(actor: AuthenticatedActor): void {
   if (!['resident', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
@@ -53,7 +80,6 @@ export class PostgresCaseRepository implements CaseRepository {
   constructor(
     private readonly db: Database,
     private readonly objectStorage: ObjectStorage,
-    private readonly hackathonHouseId?: string,
     private readonly demoMode = true,
   ) {}
 
@@ -62,22 +88,47 @@ export class PostgresCaseRepository implements CaseRepository {
     return true;
   }
 
+  async refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor> {
+    const [user] = await this.db
+      .select({
+        id: users.id,
+        role: users.role,
+        displayName: users.displayName,
+        activeHouseId: users.activeHouseId,
+      })
+      .from(users)
+      .where(eq(users.id, actor.id))
+      .limit(1);
+    if (!user) throw new ForbiddenError('Пользователь не найден');
+
+    let houseId: string | undefined;
+    if (user.activeHouseId) {
+      const [membership] = await this.db
+        .select({ houseId: houseMembers.houseId })
+        .from(houseMembers)
+        .where(
+          and(
+            eq(houseMembers.userId, user.id),
+            eq(houseMembers.houseId, user.activeHouseId),
+            eq(houseMembers.isFavorite, true),
+          ),
+        )
+        .limit(1);
+      houseId = membership?.houseId;
+    }
+    return {
+      id: user.id,
+      role: user.role,
+      displayName: user.displayName,
+      ...(houseId ? { houseId } : {}),
+    };
+  }
+
   async resolveMaxUser(input: {
     maxUserId: bigint;
     displayName: string;
     maxChatId?: bigint;
   }): Promise<AuthenticatedActor> {
-    if (input.maxChatId === undefined && !this.hackathonHouseId) {
-      throw new ForbiddenError('Откройте мини-приложение из домового чата MAX');
-    }
-    const [binding] = input.maxChatId === undefined ? [] : await this.db
-      .select({ houseId: chatBindings.houseId })
-      .from(chatBindings)
-      .where(eq(chatBindings.maxChatId, input.maxChatId))
-      .limit(1);
-    const houseId = binding?.houseId || this.hackathonHouseId;
-    if (!houseId) throw new ForbiddenError('Домовой чат ещё не подключён к ДомДелу');
-
     const [user] = await this.db
       .insert(users)
       .values({ maxUserId: input.maxUserId, displayName: input.displayName })
@@ -87,23 +138,96 @@ export class PostgresCaseRepository implements CaseRepository {
       })
       .returning({ id: users.id, role: users.role, displayName: users.displayName });
     if (!user) throw new Error('Не удалось создать пользователя MAX');
-    await this.db
-      .insert(houseMembers)
-      .values({ houseId, userId: user.id })
-      .onConflictDoNothing();
-    return {
+    return this.refreshActor({
       id: user.id,
       role: user.role,
-      houseId,
       displayName: user.displayName,
+    });
+  }
+
+  async getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto> {
+    const rows = await this.db
+      .select({
+        id: houses.id,
+        address: houses.address,
+        isDemo: houses.isDemo,
+        lastUsedAt: houseMembers.lastUsedAt,
+      })
+      .from(houseMembers)
+      .innerJoin(houses, eq(houseMembers.houseId, houses.id))
+      .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.isFavorite, true)))
+      .orderBy(desc(houseMembers.lastUsedAt), houses.address);
+    const activeId = rows.some((row) => row.id === actor.houseId) ? actor.houseId : undefined;
+    return {
+      houses: rows.map((row) => ({
+        id: row.id,
+        address: row.address,
+        isActive: row.id === activeId,
+        isDemo: row.isDemo,
+      })),
+      ...(activeId ? { activeHouseId: activeId } : {}),
+      onboardingRequired: rows.length === 0,
     };
   }
 
+  async addHouse(actor: AuthenticatedActor, input: AddHouseInput): Promise<HouseContextDto> {
+    const prepared = houseAddress(input);
+    const selected = await this.db.transaction(async (tx) => {
+      const [house] = await tx
+        .insert(houses)
+        .values(prepared)
+        .onConflictDoUpdate({
+          target: houses.normalizedAddress,
+          set: { address: prepared.address },
+        })
+        .returning({ id: houses.id });
+      if (!house) throw new Error('Не удалось сохранить адрес');
+      const now = new Date();
+      await tx
+        .insert(houseMembers)
+        .values({ houseId: house.id, userId: actor.id, isFavorite: true, lastUsedAt: now })
+        .onConflictDoUpdate({
+          target: [houseMembers.houseId, houseMembers.userId],
+          set: { isFavorite: true, lastUsedAt: now },
+        });
+      await tx.update(users).set({ activeHouseId: house.id }).where(eq(users.id, actor.id));
+      return house.id;
+    });
+    actor.houseId = selected;
+    return this.getHouseContext(actor);
+  }
+
+  async selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    const [membership] = await this.db
+      .select({ houseId: houseMembers.houseId })
+      .from(houseMembers)
+      .where(
+        and(
+          eq(houseMembers.userId, actor.id),
+          eq(houseMembers.houseId, houseId),
+          eq(houseMembers.isFavorite, true),
+        ),
+      )
+      .limit(1);
+    if (!membership) throw new ForbiddenError('Сначала добавьте этот адрес в «Мои дома»');
+    const now = new Date();
+    await Promise.all([
+      this.db.update(users).set({ activeHouseId: houseId }).where(eq(users.id, actor.id)),
+      this.db
+        .update(houseMembers)
+        .set({ lastUsedAt: now })
+        .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.houseId, houseId))),
+    ]);
+    actor.houseId = houseId;
+    return this.getHouseContext(actor);
+  }
+
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
+    const houseId = activeHouseId(actor);
     const rows = await this.db
       .select({ id: cases.id })
       .from(cases)
-      .where(and(eq(cases.houseId, actor.houseId), status ? eq(cases.status, status) : undefined))
+      .where(and(eq(cases.houseId, houseId), status ? eq(cases.status, status) : undefined))
       .orderBy(desc(cases.updatedAt));
     return Promise.all(rows.map(({ id }) => this.hydrate(actor, id)));
   }
@@ -116,6 +240,7 @@ export class PostgresCaseRepository implements CaseRepository {
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
   ): Promise<CaseDto[]> {
+    const houseId = activeHouseId(actor);
     const inputText = normalized(`${input.place} ${input.description}`);
     const similarity = sql<number>`similarity(${cases.normalizedText}, ${inputText})`;
     const rows = await this.db
@@ -123,7 +248,7 @@ export class PostgresCaseRepository implements CaseRepository {
       .from(cases)
       .where(
         and(
-          eq(cases.houseId, actor.houseId),
+          eq(cases.houseId, houseId),
           ne(cases.status, 'resolved'),
           eq(cases.category, input.category),
           input.entrance ? eq(cases.entrance, input.entrance) : undefined,
@@ -142,6 +267,7 @@ export class PostgresCaseRepository implements CaseRepository {
     idempotencyKey: string,
   ): Promise<CaseDto> {
     ensureResident(actor);
+    const houseId = activeHouseId(actor);
     if (input.duplicateCaseId) return this.confirmCase(actor, input.duplicateCaseId);
 
     const created = await this.db.transaction(async (tx) => {
@@ -156,7 +282,7 @@ export class PostgresCaseRepository implements CaseRepository {
       const [inserted] = await tx
         .insert(cases)
         .values({
-          houseId: actor.houseId,
+          houseId,
           authorId: actor.id,
           title: input.title,
           description: input.description,
@@ -239,6 +365,7 @@ export class PostgresCaseRepository implements CaseRepository {
     input: TransitionCaseInput,
   ): Promise<CaseDto> {
     const current = await this.ensureVisible(actor, caseId);
+    const houseId = activeHouseId(actor);
     assertTransitionAllowed(current.status, input.status, actor.role);
 
     await this.db.transaction(async (tx) => {
@@ -256,7 +383,7 @@ export class PostgresCaseRepository implements CaseRepository {
         .where(
           and(
             eq(cases.id, caseId),
-            eq(cases.houseId, actor.houseId),
+            eq(cases.houseId, houseId),
             eq(cases.version, input.expectedVersion),
           ),
         )
@@ -338,10 +465,11 @@ export class PostgresCaseRepository implements CaseRepository {
   }
 
   private async ensureVisible(actor: AuthenticatedActor, caseId: string) {
+    const houseId = activeHouseId(actor);
     const [item] = await this.db
       .select()
       .from(cases)
-      .where(and(eq(cases.id, caseId), eq(cases.houseId, actor.houseId)))
+      .where(and(eq(cases.id, caseId), eq(cases.houseId, houseId)))
       .limit(1);
     if (!item) throw new NotFoundError('Дело не найдено');
     return item;

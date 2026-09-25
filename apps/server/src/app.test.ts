@@ -19,6 +19,18 @@ async function testApp() {
   return app;
 }
 
+async function addDemoHouse(
+  app: Awaited<ReturnType<typeof buildApp>>,
+  user = 'resident-1',
+) {
+  return app.inject({
+    method: 'POST',
+    url: '/api/me/houses',
+    headers: { 'x-demo-user': user },
+    payload: { city: 'Казань', street: 'Спортивная', building: '12' },
+  });
+}
+
 afterEach(async () => {
   await Promise.all(openedApps.splice(0).map((app) => app.close()));
 });
@@ -51,8 +63,65 @@ describe('ДомДело API', () => {
     expect(ready.json()).toEqual({ status: 'ready' });
   });
 
+  it('requires an address before exposing house cases', async () => {
+    const app = await testApp();
+    const blocked = await app.inject({
+      method: 'GET',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(blocked.statusCode).toBe(403);
+    expect(blocked.json()).toMatchObject({ error: 'address_required' });
+
+    const added = await addDemoHouse(app);
+    expect(added.statusCode).toBe(200);
+    expect(added.json()).toMatchObject({ onboardingRequired: false });
+    expect(added.json().houses).toHaveLength(1);
+
+    const cases = await app.inject({
+      method: 'GET',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(cases.statusCode).toBe(200);
+  });
+
+  it('keeps cases isolated while a resident switches between favorite homes', async () => {
+    const app = await testApp();
+    const first = await addDemoHouse(app);
+    const firstHouseId = first.json().activeHouseId as string;
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/me/houses',
+      headers: { 'x-demo-user': 'resident-1' },
+      payload: { city: 'Москва', street: 'Тверская', building: '7' },
+    });
+    expect(second.json().houses).toHaveLength(2);
+
+    const emptySecondHouse = await app.inject({
+      method: 'GET',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(emptySecondHouse.json()).toEqual([]);
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/me/houses/${firstHouseId}/select`,
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    const originalHouseCases = await app.inject({
+      method: 'GET',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(originalHouseCases.json()).toHaveLength(2);
+  });
+
   it('finds a similar open case before creating a duplicate', async () => {
     const app = await testApp();
+    await addDemoHouse(app, 'resident-2');
     const response = await app.inject({
       method: 'POST',
       url: '/api/cases/deduplication',
@@ -70,6 +139,8 @@ describe('ДомДело API', () => {
 
   it('runs creation and dispatcher assignment through the same workflow', async () => {
     const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    await addDemoHouse(app, 'dispatcher-1');
     const createRequest = {
       method: 'POST',
       url: '/api/cases',
