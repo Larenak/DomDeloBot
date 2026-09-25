@@ -7,6 +7,24 @@ import type {
 
 const DEMO_USER_KEY = 'domdelo.demoUser';
 const SESSION_KEY = 'domdelo.session';
+const ACTOR_KEY = 'domdelo.actor';
+
+type SessionActor = { id: string; role: 'resident' | 'dispatcher' | 'executor' | 'admin'; houseId: string; displayName: string };
+
+export function getSessionActor(): SessionActor | null {
+  try {
+    const value = sessionStorage.getItem(ACTOR_KEY);
+    return value ? JSON.parse(value) as SessionActor : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getPublicConfig(): Promise<{ demoMode: boolean }> {
+  const response = await fetch('/api/public-config');
+  if (!response.ok) throw new Error('Не удалось загрузить настройки приложения');
+  return response.json() as Promise<{ demoMode: boolean }>;
+}
 
 export type DemoUserKey = 'resident-1' | 'resident-2' | 'dispatcher-1' | 'executor-1';
 
@@ -27,8 +45,9 @@ export async function initializeMaxSession(): Promise<void> {
     body: JSON.stringify({ initData }),
   });
   if (!response.ok) throw await toApiError(response);
-  const result = (await response.json()) as { token: string };
+  const result = (await response.json()) as { token: string; actor: SessionActor };
   sessionStorage.setItem(SESSION_KEY, result.token);
+  sessionStorage.setItem(ACTOR_KEY, JSON.stringify(result.actor));
 }
 
 function requestHeaders(extra?: HeadersInit): Headers {

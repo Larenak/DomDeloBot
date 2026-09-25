@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
 import App from './App.js';
-import { initializeMaxSession } from './api.js';
+import { getPublicConfig, initializeMaxSession } from './api.js';
 import { pathFromMaxStartParam } from './max-launch.js';
 import './styles.css';
 
@@ -18,6 +18,7 @@ const queryClient = new QueryClient({
 });
 
 async function bootstrap() {
+  const publicConfig = await getPublicConfig().catch(() => ({ demoMode: false }));
   window.WebApp?.ready?.();
   window.WebApp?.expand?.();
   const launchPath = pathFromMaxStartParam(window.WebApp?.initDataUnsafe?.start_param);
@@ -30,7 +31,7 @@ async function bootstrap() {
       <MaxUI>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <App />
+            <App demoMode={publicConfig.demoMode} />
           </BrowserRouter>
         </QueryClientProvider>
       </MaxUI>

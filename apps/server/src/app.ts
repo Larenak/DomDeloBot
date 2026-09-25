@@ -1,9 +1,11 @@
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import type { AppConfig } from '@domdelo/config';
 import Fastify from 'fastify';
+import { fileURLToPath } from 'node:url';
 
 import { createDatabase } from './db/client.js';
 import { registerAuth } from './modules/auth/plugin.js';
@@ -22,6 +24,7 @@ import { PostgresCaseRepository } from './repositories/postgres-case-repository.
 import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
 import {
   InMemoryObjectStorage,
+  PostgresObjectStorage,
   S3ObjectStorage,
   type ObjectStorage,
 } from './services/object-storage.js';
@@ -42,11 +45,16 @@ export async function buildApp(options: BuildAppOptions) {
   });
   app.decorate('config', options.config);
 
-  const objectStorage =
-    options.objectStorage ||
-    (options.config.storageMode === 'memory'
+  const needsDatabase = options.config.storageMode === 'postgres' &&
+    (!options.caseRepository || (!options.objectStorage && options.config.objectStorageMode === 'postgres'));
+  const database = needsDatabase ? createDatabase(options.config) : undefined;
+  const objectStorage: ObjectStorage = options.objectStorage || (
+    options.config.objectStorageMode === 'memory'
       ? new InMemoryObjectStorage()
-      : new S3ObjectStorage(options.config));
+      : options.config.objectStorageMode === 'postgres'
+        ? new PostgresObjectStorage(database!.db, options.config.sessionSecret)
+        : new S3ObjectStorage(options.config)
+  );
   app.decorate('objectStorage', objectStorage);
 
   const notifier = options.notifier || new MaxNotifier(options.config.maxBotToken, options.config.maxApiBaseUrl);
@@ -57,12 +65,13 @@ export async function buildApp(options: BuildAppOptions) {
   } else if (options.config.storageMode === 'memory') {
     app.decorate('caseRepository', new InMemoryCaseRepository());
   } else {
-    const { client, db } = createDatabase(options.config);
-    app.decorate('caseRepository', new PostgresCaseRepository(db, objectStorage));
-    stopOutboxWorker = startOutboxWorker(db, notifier, app.log);
+    app.decorate('caseRepository', new PostgresCaseRepository(database!.db, objectStorage, options.config.hackathonHouseId));
+    stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
+  }
+  if (database) {
     app.addHook('onClose', async () => {
       stopOutboxWorker?.();
-      await client.end();
+      await database.client.end();
     });
   }
 
@@ -108,9 +117,28 @@ export async function buildApp(options: BuildAppOptions) {
   if (objectStorage.get) {
     app.get('/api/files/:key', async (request, reply) => {
       const { key } = request.params as { key: string };
-      const found = await objectStorage.get!(decodeURIComponent(key));
+      const query = request.query as { expires?: string; signature?: string };
+      const found = await objectStorage.get!(decodeURIComponent(key), query);
       if (!found) return reply.code(404).send({ error: 'not_found', message: 'Файл не найден' });
       return reply.type(found.contentType).send(found.body);
+    });
+  }
+
+  if (options.config.serveWeb) {
+    await app.register(fastifyStatic, {
+      root: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
+      wildcard: false,
+    });
+    app.setNotFoundHandler((request, reply) => {
+      const pathname = new URL(request.url, 'http://localhost').pathname;
+      if (
+        request.method === 'GET' &&
+        request.headers.accept?.includes('text/html') &&
+        !/^\/(api|health|docs|webhooks)(\/|$)/u.test(pathname)
+      ) {
+        return reply.sendFile('index.html');
+      }
+      return reply.code(404).send({ error: 'not_found', message: 'Страница не найдена' });
     });
   }
 

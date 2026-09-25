@@ -24,6 +24,25 @@ afterEach(async () => {
 });
 
 describe('ДомДело API', () => {
+  it('does not accept demo roles when published', async () => {
+    const productionConfig = loadConfig({
+      NODE_ENV: 'production',
+      STORAGE_MODE: 'memory',
+      DEMO_MODE: 'false',
+      SESSION_SECRET: 'test-session-secret-with-enough-entropy',
+    });
+    const app = await buildApp({ config: productionConfig });
+    openedApps.push(app);
+    const publicConfig = await app.inject({ method: 'GET', url: '/api/public-config' });
+    const cases = await app.inject({
+      method: 'GET',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'dispatcher-1' },
+    });
+    expect(publicConfig.json()).toEqual({ demoMode: false });
+    expect(cases.statusCode).toBe(401);
+  });
+
   it('reports liveness and readiness', async () => {
     const app = await testApp();
     const live = await app.inject({ method: 'GET', url: '/health/live' });

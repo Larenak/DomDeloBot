@@ -29,6 +29,8 @@ COPY --from=build --chown=node:node /workspace/apps/server/node_modules ./apps/s
 COPY --from=build --chown=node:node /workspace/apps/server/dist ./apps/server/dist
 COPY --from=build --chown=node:node /workspace/packages ./packages
 COPY --from=build --chown=node:node /workspace/db/migrations ./db/migrations
+COPY --from=build --chown=node:node /workspace/infra/certs ./infra/certs
+ENV NODE_EXTRA_CA_CERTS=/app/infra/certs/russian_trusted_root_ca.cer
 USER node
 EXPOSE 3000
 CMD ["sh", "-c", "node apps/server/dist/db/migrate.js && node apps/server/dist/db/seed.js && node apps/server/dist/index.js"]
@@ -38,3 +40,8 @@ COPY infra/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /workspace/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080
 
+# One public service serves the UI, API and webhook under the same HTTPS origin.
+FROM server AS hosted
+COPY --from=build --chown=node:node /workspace/apps/web/dist ./apps/web/dist
+ENV SERVE_WEB=true
+CMD ["sh", "-c", "node apps/server/dist/db/migrate.js && node apps/server/dist/db/seed-hackathon-house.js && node apps/server/dist/index.js"]

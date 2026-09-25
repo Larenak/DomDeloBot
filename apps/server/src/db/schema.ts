@@ -76,6 +76,14 @@ export const chatBindings = pgTable('chat_bindings', {
   isDemo: boolean('is_demo').notNull().default(false),
 });
 
+// Small hackathon deployments can store photos in PostgreSQL when S3 is unavailable.
+export const storedObjects = pgTable('stored_objects', {
+  key: text('key').primaryKey(),
+  contentType: text('content_type').notNull(),
+  bodyBase64: text('body_base64').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const cases = pgTable(
   'cases',
   {

@@ -1,6 +1,6 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import { getDemoUser, setDemoUser, type DemoUserKey } from './api.js';
+import { getDemoUser, getSessionActor, setDemoUser, type DemoUserKey } from './api.js';
 import { CaseDetailPage } from './pages/CaseDetailPage.js';
 import { CasesPage } from './pages/CasesPage.js';
 import { DispatcherPage } from './pages/DispatcherPage.js';
@@ -13,14 +13,26 @@ const demoUsers: Array<{ key: DemoUserKey; label: string }> = [
   { key: 'executor-1', label: 'Исполнитель · Илья' },
 ];
 
-function AppShell() {
+function AppShell({ demoMode }: { demoMode: boolean }) {
   const location = useLocation();
   const selectedUser = getDemoUser();
-  const isWorkRole = selectedUser.startsWith('dispatcher') || selectedUser.startsWith('executor');
+  const actor = getSessionActor();
+  const isWorkRole = actor
+    ? ['dispatcher', 'executor', 'admin'].includes(actor.role)
+    : demoMode && (selectedUser.startsWith('dispatcher') || selectedUser.startsWith('executor'));
   const switchUser = (value: DemoUserKey) => {
     setDemoUser(value);
     window.location.assign(value.startsWith('resident') ? '/' : '/dispatcher');
   };
+
+  if (!demoMode && !window.WebApp?.initData) {
+    return (
+      <main className="page">
+        <h1>Откройте ДомДело в MAX</h1>
+        <p>Перейдите в чат с ботом и нажмите кнопку открытия мини-приложения.</p>
+      </main>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -29,7 +41,7 @@ function AppShell() {
           <span className="brand__mark">Д</span>
           <span><strong>ДомДело</strong><small>до подтверждённого результата</small></span>
         </NavLink>
-        {!window.WebApp?.initData ? (
+        {demoMode && !window.WebApp?.initData ? (
           <label className="demo-switcher">
             <span>Демо-роль</span>
             <select value={selectedUser} onChange={(event) => switchUser(event.target.value as DemoUserKey)}>
@@ -52,11 +64,10 @@ function AppShell() {
           <span>⌂</span>Дела
         </NavLink>
         <NavLink to="/new"><span>＋</span>Создать</NavLink>
-        <NavLink to="/dispatcher"><span>▦</span>Диспетчер</NavLink>
+        {isWorkRole ? <NavLink to="/dispatcher"><span>▦</span>Диспетчер</NavLink> : null}
       </nav>
     </div>
   );
 }
 
 export default AppShell;
-

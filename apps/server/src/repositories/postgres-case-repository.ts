@@ -53,6 +53,7 @@ export class PostgresCaseRepository implements CaseRepository {
   constructor(
     private readonly db: Database,
     private readonly objectStorage: ObjectStorage,
+    private readonly hackathonHouseId?: string,
   ) {}
 
   async ready(): Promise<boolean> {
@@ -65,15 +66,16 @@ export class PostgresCaseRepository implements CaseRepository {
     displayName: string;
     maxChatId?: bigint;
   }): Promise<AuthenticatedActor> {
-    if (input.maxChatId === undefined) {
+    if (input.maxChatId === undefined && !this.hackathonHouseId) {
       throw new ForbiddenError('Откройте мини-приложение из домового чата MAX');
     }
-    const [binding] = await this.db
+    const [binding] = input.maxChatId === undefined ? [] : await this.db
       .select({ houseId: chatBindings.houseId })
       .from(chatBindings)
       .where(eq(chatBindings.maxChatId, input.maxChatId))
       .limit(1);
-    if (!binding) throw new ForbiddenError('Домовой чат ещё не подключён к ДомДелу');
+    const houseId = binding?.houseId || this.hackathonHouseId;
+    if (!houseId) throw new ForbiddenError('Домовой чат ещё не подключён к ДомДелу');
 
     const [user] = await this.db
       .insert(users)
@@ -86,12 +88,12 @@ export class PostgresCaseRepository implements CaseRepository {
     if (!user) throw new Error('Не удалось создать пользователя MAX');
     await this.db
       .insert(houseMembers)
-      .values({ houseId: binding.houseId, userId: user.id })
+      .values({ houseId, userId: user.id })
       .onConflictDoNothing();
     return {
       id: user.id,
       role: user.role,
-      houseId: binding.houseId,
+      houseId,
       displayName: user.displayName,
     };
   }

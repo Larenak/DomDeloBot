@@ -14,6 +14,9 @@ export type AppConfig = {
   logLevel: string;
   demoMode: boolean;
   storageMode: 'postgres' | 'memory';
+  objectStorageMode: 's3' | 'postgres' | 'memory';
+  serveWeb: boolean;
+  hackathonHouseId?: string;
   s3: {
     endpoint: string;
     region: string;
@@ -86,6 +89,7 @@ function normalizedBotUsername(value: string | undefined): string | undefined {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = (env.NODE_ENV || 'development') as AppConfig['nodeEnv'];
   const storageMode = (env.STORAGE_MODE || 'postgres') as AppConfig['storageMode'];
+  const objectStorageMode = (env.OBJECT_STORAGE_MODE || (storageMode === 'memory' ? 'memory' : 's3')) as AppConfig['objectStorageMode'];
   const maxDeliveryMode = (env.MAX_DELIVERY_MODE || 'webhook') as AppConfig['maxDeliveryMode'];
 
   if (!['development', 'test', 'production'].includes(nodeEnv)) {
@@ -93,6 +97,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   if (!['postgres', 'memory'].includes(storageMode)) {
     throw new Error('STORAGE_MODE должен быть postgres или memory');
+  }
+  if (!['s3', 'postgres', 'memory'].includes(objectStorageMode)) {
+    throw new Error('OBJECT_STORAGE_MODE должен быть s3, postgres или memory');
+  }
+  if (objectStorageMode === 'postgres' && storageMode !== 'postgres') {
+    throw new Error('OBJECT_STORAGE_MODE=postgres требует STORAGE_MODE=postgres');
   }
   if (!['webhook', 'polling', 'disabled'].includes(maxDeliveryMode)) {
     throw new Error('MAX_DELIVERY_MODE должен быть webhook, polling или disabled');
@@ -109,6 +119,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ? normalizedBaseUrl('MAX_MINI_APP_URL', miniAppUrlCandidate, true)
     : undefined;
   const maxMiniAppBotUsername = normalizedBotUsername(env.MAX_MINI_APP_BOT_USERNAME);
+  const hackathonHouseId = env.HACKATHON_HOUSE_ID?.trim();
+  if (hackathonHouseId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(hackathonHouseId)) {
+    throw new Error('HACKATHON_HOUSE_ID должен быть UUID');
+  }
 
   return {
     nodeEnv,
@@ -132,19 +146,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       'development-only-session-secret-change-me',
     ),
     logLevel: env.LOG_LEVEL || 'info',
-    demoMode: booleanValue(env.DEMO_MODE, true),
+    demoMode: booleanValue(env.DEMO_MODE, nodeEnv !== 'production'),
     storageMode,
+    objectStorageMode,
+    serveWeb: booleanValue(env.SERVE_WEB, false),
+    ...(hackathonHouseId ? { hackathonHouseId } : {}),
     s3: {
       endpoint: env.S3_ENDPOINT || 'http://localhost:9000',
       region: env.S3_REGION || 'ru-1',
       bucket: env.S3_BUCKET || 'domdelo',
       accessKeyId: env.S3_ACCESS_KEY_ID || 'domdelo',
-      secretAccessKey: requiredInProduction(
-        'S3_SECRET_ACCESS_KEY',
-        env.S3_SECRET_ACCESS_KEY,
-        nodeEnv,
-        'domdelo-development-secret',
-      ),
+      secretAccessKey: objectStorageMode === 's3'
+        ? requiredInProduction('S3_SECRET_ACCESS_KEY', env.S3_SECRET_ACCESS_KEY, nodeEnv, 'domdelo-development-secret')
+        : env.S3_SECRET_ACCESS_KEY || 'unused',
       forcePathStyle: booleanValue(env.S3_FORCE_PATH_STYLE, true),
     },
   };

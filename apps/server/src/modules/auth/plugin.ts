@@ -5,6 +5,8 @@ import { createSessionToken, verifySessionToken } from './session.js';
 import { validateMaxInitData } from './max-init-data.js';
 
 export async function registerAuth(app: FastifyInstance): Promise<void> {
+  app.get('/api/public-config', async () => ({ demoMode: app.config.demoMode }));
+
   app.decorate('authenticate', async (request, reply) => {
     const demoUser = request.headers['x-demo-user'];
     if (app.config.demoMode && typeof demoUser === 'string' && demoActors[demoUser]) {

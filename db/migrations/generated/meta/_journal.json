@@ -15,6 +15,13 @@
       "when": 1790174520910,
       "tag": "0001_slippery_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790339035218,
+      "tag": "0002_hard_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

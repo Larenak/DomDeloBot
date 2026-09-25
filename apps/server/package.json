@@ -22,6 +22,7 @@
     "@domdelo/domain": "workspace:*",
     "@fastify/cors": "11.3.0",
     "@fastify/multipart": "10.1.2",
+    "@fastify/static": "10.1.4",
     "@fastify/swagger": "9.9.0",
     "@fastify/swagger-ui": "6.1.1",
     "@maxhub/max-bot-api": "0.3.1",
