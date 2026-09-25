@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 FROM dependencies AS build
 COPY . .
 RUN pnpm build
-RUN pnpm prune --prod
+RUN CI=true pnpm prune --prod
 
 FROM node:24.21.0-bookworm-slim AS server
 ENV NODE_ENV=production
