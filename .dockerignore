@@ -6,6 +6,7 @@
 .pnpm
 node_modules
 **/dist
+*.tsbuildinfo
 coverage
 tmp
 .env
@@ -14,4 +15,3 @@ tmp
 docs/*.pdf
 playwright-report
 test-results
-

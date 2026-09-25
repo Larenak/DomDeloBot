@@ -1,5 +1,6 @@
 node_modules/
 dist/
+*.tsbuildinfo
 coverage/
 .env
 .env.*
@@ -13,4 +14,3 @@ playwright-report/
 test-results/
 *.log
 .DS_Store
-
