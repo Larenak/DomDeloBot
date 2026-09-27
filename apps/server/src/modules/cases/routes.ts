@@ -139,6 +139,27 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.delete(
+    '/api/cases/:caseId/watchers',
+    {
+      ...secured,
+      schema: {
+        tags: ['cases'],
+        security: [{ bearerAuth: [] }, { demoUser: [] }],
+        params: {
+          type: 'object',
+          required: ['caseId'],
+          properties: { caseId: { type: 'string', format: 'uuid' } },
+        },
+        response: { 200: CaseSchema },
+      },
+    },
+    async (request) => {
+      const { caseId } = request.params as { caseId: string };
+      return app.caseRepository.unwatchCase(request.actor!, caseId);
+    },
+  );
+
   app.patch(
     '/api/cases/:caseId/status',
     {

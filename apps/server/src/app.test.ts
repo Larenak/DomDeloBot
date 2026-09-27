@@ -137,6 +137,42 @@ describe('ДомДело API', () => {
     expect(response.json()[0]).toMatchObject({ number: 128, category: 'lighting' });
   });
 
+  it('tracks followed cases per resident and follows newly created cases automatically', async () => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    await addDemoHouse(app, 'resident-2');
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1', 'idempotency-key': 'follow-created-case' },
+      payload: {
+        title: 'Течёт труба в подвале',
+        description: 'В подвале течёт труба, на полу скопилась вода.',
+        category: 'water',
+        place: 'Подвал',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ isWatched: true, watchersCount: 1 });
+    const caseId = created.json().id as string;
+
+    const secondResidentList = await app.inject({
+      method: 'GET', url: '/api/cases', headers: { 'x-demo-user': 'resident-2' },
+    });
+    expect(secondResidentList.json().find((item: { id: string }) => item.id === caseId)).toMatchObject({
+      isWatched: false, watchersCount: 1,
+    });
+
+    const watched = await app.inject({
+      method: 'POST', url: `/api/cases/${caseId}/watchers`, headers: { 'x-demo-user': 'resident-2' },
+    });
+    expect(watched.json()).toMatchObject({ isWatched: true, watchersCount: 2 });
+    const unwatched = await app.inject({
+      method: 'DELETE', url: `/api/cases/${caseId}/watchers`, headers: { 'x-demo-user': 'resident-2' },
+    });
+    expect(unwatched.json()).toMatchObject({ isWatched: false, watchersCount: 1 });
+  });
+
   it('runs creation and dispatcher assignment through the same workflow', async () => {
     const app = await testApp();
     await addDemoHouse(app, 'resident-1');

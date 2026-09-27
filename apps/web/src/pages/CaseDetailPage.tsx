@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { caseApi, getDemoUser } from '../api.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
+import { PhotoGallery } from '../components/PhotoGallery.js';
 import { formatRelativeDate, statusTone } from '../format.js';
 
 const actionLabels = {
@@ -25,7 +26,10 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
     ]);
   };
   const confirm = useMutation({ mutationFn: () => caseApi.confirm(caseId), onSuccess: invalidate });
-  const watch = useMutation({ mutationFn: () => caseApi.watch(caseId), onSuccess: invalidate });
+  const watch = useMutation({
+    mutationFn: (isWatched: boolean) => isWatched ? caseApi.unwatch(caseId) : caseApi.watch(caseId),
+    onSuccess: invalidate,
+  });
   const transition = useMutation({
     mutationFn: (status: 'resolved' | 'disputed') =>
       caseApi.transition(caseId, { status, expectedVersion: query.data!.version }),
@@ -100,28 +104,20 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
             <button
               className="button button--secondary"
               disabled={watch.isPending}
-              onClick={() => watch.mutate()}
+              onClick={() => watch.mutate(item.isWatched)}
             >
-              Следить за делом
+              {item.isWatched ? '★ Не следить за делом' : '☆ Следить за делом'}
             </button>
           </div>
         ) : null}
+        {watch.isError ? <p className="form-error">{watch.error.message}</p> : null}
       </section>
 
       <section className="content-card">
         <div className="section-heading section-heading--inside">
           <div><h2>Фотографии</h2><p>Доказательства проблемы и результата</p></div>
         </div>
-        {item.attachments.length ? (
-          <div className="photo-grid">
-            {item.attachments.map((attachment) => (
-              <figure key={attachment.id}>
-                <img src={attachment.url} alt={attachment.kind === 'result' ? 'Результат работы' : 'Проблема'} />
-                <figcaption>{attachment.kind === 'result' ? 'Результат' : 'Проблема'}</figcaption>
-              </figure>
-            ))}
-          </div>
-        ) : <p className="muted-box">Фотографий пока нет.</p>}
+        {item.attachments.length ? <PhotoGallery attachments={item.attachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
         <div className="upload-row">
           <select value={uploadKind} onChange={(event) => setUploadKind(event.target.value as 'problem' | 'result')}>
             <option value="problem">Фото проблемы</option>

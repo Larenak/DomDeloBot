@@ -34,6 +34,7 @@ export function CaseCard({ item }: { item: CaseDto }) {
         </p>
         <div className="case-card__meta">
           <span>● {item.confirmationsCount} подтвердили</span>
+          {item.isWatched ? <span className="case-card__watching">★ Отслеживаю</span> : null}
           <span>{formatRelativeDate(item.updatedAt)}</span>
         </div>
       </div>

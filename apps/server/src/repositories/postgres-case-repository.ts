@@ -359,6 +359,14 @@ export class PostgresCaseRepository implements CaseRepository {
     return this.hydrate(actor, caseId);
   }
 
+  async unwatchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
+    await this.ensureVisible(actor, caseId);
+    await this.db
+      .delete(caseWatchers)
+      .where(and(eq(caseWatchers.caseId, caseId), eq(caseWatchers.userId, actor.id)));
+    return this.hydrate(actor, caseId);
+  }
+
   async transitionCase(
     actor: AuthenticatedActor,
     caseId: string,
@@ -477,7 +485,7 @@ export class PostgresCaseRepository implements CaseRepository {
 
   private async hydrate(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
     const item = await this.ensureVisible(actor, caseId);
-    const [[confirmationCount], [watcherCount], historyRows, attachmentRows] = await Promise.all([
+    const [[confirmationCount], [watcherCount], [ownWatch], historyRows, attachmentRows] = await Promise.all([
       this.db
         .select({ value: count() })
         .from(caseConfirmations)
@@ -486,6 +494,11 @@ export class PostgresCaseRepository implements CaseRepository {
         .select({ value: count() })
         .from(caseWatchers)
         .where(eq(caseWatchers.caseId, caseId)),
+      this.db
+        .select({ userId: caseWatchers.userId })
+        .from(caseWatchers)
+        .where(and(eq(caseWatchers.caseId, caseId), eq(caseWatchers.userId, actor.id)))
+        .limit(1),
       this.db
         .select({
           id: caseStatusHistory.id,
@@ -529,6 +542,7 @@ export class PostgresCaseRepository implements CaseRepository {
       status: item.status,
       confirmationsCount: confirmationCount?.value ?? 0,
       watchersCount: watcherCount?.value ?? 0,
+      isWatched: Boolean(ownWatch),
       responsibleOrganization: item.responsibleOrganization,
       ...(item.assignee ? { assignee: item.assignee } : {}),
       ...(item.resultComment ? { resultComment: item.resultComment } : {}),

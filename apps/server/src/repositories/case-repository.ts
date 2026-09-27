@@ -45,6 +45,7 @@ export interface CaseRepository {
   ): Promise<CaseDto>;
   confirmCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   watchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
+  unwatchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   transitionCase(
     actor: AuthenticatedActor,
     caseId: string,

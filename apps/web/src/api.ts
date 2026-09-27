@@ -108,6 +108,7 @@ export const caseApi = {
     }),
   confirm: (id: string) => api<CaseDto>(`/api/cases/${id}/confirmations`, { method: 'POST' }),
   watch: (id: string) => api<CaseDto>(`/api/cases/${id}/watchers`, { method: 'POST' }),
+  unwatch: (id: string) => api<CaseDto>(`/api/cases/${id}/watchers`, { method: 'DELETE' }),
   transition: (id: string, input: TransitionCaseInput) =>
     api<CaseDto>(`/api/cases/${id}/status`, {
       method: 'PATCH',

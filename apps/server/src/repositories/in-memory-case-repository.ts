@@ -66,6 +66,7 @@ function seedCases(): CaseDto[] {
       status: 'registered',
       confirmationsCount: 6,
       watchersCount: 4,
+      isWatched: false,
       responsibleOrganization: 'УК «Наш дом»',
       version: 1,
       isDemo: true,
@@ -94,6 +95,7 @@ function seedCases(): CaseDto[] {
       status: 'in_progress',
       confirmationsCount: 3,
       watchersCount: 5,
+      isWatched: false,
       responsibleOrganization: 'УК «Наш дом»',
       assignee: 'Мастер участка Сергей',
       version: 3,
@@ -142,10 +144,6 @@ function similarity(left: string, right: string): number {
   if (a.size === 0 || b.size === 0) return 0;
   const intersection = [...a].filter((token) => b.has(token)).length;
   return intersection / (a.size + b.size - intersection);
-}
-
-function cloneCase(item: CaseDto): CaseDto {
-  return structuredClone(item);
 }
 
 function ensureResidentOrAdmin(actor: AuthenticatedActor): void {
@@ -274,12 +272,12 @@ export class InMemoryCaseRepository implements CaseRepository {
     return this.items
       .filter((item) => item.houseId === houseId && (!status || item.status === status))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .map(cloneCase);
+      .map((item) => this.viewCase(actor, item));
   }
 
   async getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
     const item = this.getMutable(actor, caseId);
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async findDuplicates(
@@ -306,7 +304,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       .filter(({ score }) => score >= 0.2)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
-      .map(({ item }) => cloneCase(item));
+      .map(({ item }) => this.viewCase(actor, item));
   }
 
   async createCase(
@@ -337,6 +335,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       status: 'registered',
       confirmationsCount: 1,
       watchersCount: 1,
+      isWatched: true,
       responsibleOrganization: routeResponsibleOrganization(input.category),
       version: 1,
       isDemo: true,
@@ -357,7 +356,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     this.idempotencyKeys.set(idempotencyScope, item.id);
     this.confirmations.add(`${item.id}:${actor.id}`);
     this.watchers.add(`${item.id}:${actor.id}`);
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async confirmCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -369,7 +368,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       item.confirmationsCount += 1;
       item.updatedAt = new Date().toISOString();
     }
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async watchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -380,7 +379,17 @@ export class InMemoryCaseRepository implements CaseRepository {
       item.watchersCount += 1;
       item.updatedAt = new Date().toISOString();
     }
-    return cloneCase(item);
+    return this.viewCase(actor, item);
+  }
+
+  async unwatchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
+    const item = this.getMutable(actor, caseId);
+    const key = `${caseId}:${actor.id}`;
+    if (this.watchers.delete(key)) {
+      item.watchersCount -= 1;
+      item.updatedAt = new Date().toISOString();
+    }
+    return this.viewCase(actor, item);
   }
 
   async transitionCase(
@@ -410,7 +419,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       ...(input.comment ? { comment: input.comment } : {}),
       createdAt: item.updatedAt,
     });
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async addAttachment(
@@ -431,7 +440,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       createdAt: new Date().toISOString(),
     });
     item.updatedAt = new Date().toISOString();
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async saveWebhookEvent(eventId: string): Promise<boolean> {
@@ -447,6 +456,13 @@ export class InMemoryCaseRepository implements CaseRepository {
       throw new NotFoundError('Дело не найдено');
     }
     return item;
+  }
+
+  private viewCase(actor: AuthenticatedActor, item: CaseDto): CaseDto {
+    return {
+      ...structuredClone(item),
+      isWatched: this.watchers.has(`${item.id}:${actor.id}`),
+    };
   }
 }
 
