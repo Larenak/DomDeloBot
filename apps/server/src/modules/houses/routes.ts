@@ -1,14 +1,36 @@
 import {
   AddHouseSchema,
+  AddressSuggestionSchema,
   ErrorSchema,
   HouseContextSchema,
   type AddHouseInput,
 } from '@domdelo/contracts';
 import type { FastifyInstance } from 'fastify';
+import type { AddressProvider } from '../../services/address-provider.js';
 
-export async function registerHouseRoutes(app: FastifyInstance): Promise<void> {
+export async function registerHouseRoutes(app: FastifyInstance, addressProvider: AddressProvider): Promise<void> {
   const secured = { preHandler: app.authenticate };
   const security = [{ bearerAuth: [] }, { demoUser: [] }];
+
+  app.get(
+    '/api/addresses/suggest',
+    {
+      ...secured,
+      schema: {
+        tags: ['houses'],
+        security,
+        querystring: {
+          type: 'object', required: ['q'],
+          properties: { q: { type: 'string', minLength: 2, maxLength: 200 } },
+        },
+        response: { 200: { type: 'array', items: AddressSuggestionSchema }, 401: ErrorSchema },
+      },
+    },
+    async (request) => {
+      const { q } = request.query as { q: string };
+      return addressProvider.suggest(q.trim());
+    },
+  );
 
   app.get(
     '/api/me/houses',
@@ -31,11 +53,20 @@ export async function registerHouseRoutes(app: FastifyInstance): Promise<void> {
         tags: ['houses'],
         security,
         body: AddHouseSchema,
-        response: { 200: HouseContextSchema, 400: ErrorSchema, 401: ErrorSchema },
+        response: { 200: HouseContextSchema, 400: ErrorSchema, 401: ErrorSchema, 422: ErrorSchema },
       },
     },
-    async (request) =>
-      app.caseRepository.addHouse(request.actor!, request.body as AddHouseInput),
+    async (request, reply) => {
+      const { fiasId } = request.body as AddHouseInput;
+      const verified = await addressProvider.resolveHouse(fiasId);
+      if (!verified) {
+        return reply.code(422).send({
+          error: 'address_not_found',
+          message: 'Выберите существующий дом из подсказок. Если адрес больше неактуален, попробуйте другой.',
+        });
+      }
+      return app.caseRepository.addHouse(request.actor!, verified);
+    },
   );
 
   app.post(

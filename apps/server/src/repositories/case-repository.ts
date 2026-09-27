@@ -1,5 +1,4 @@
 import type {
-  AddHouseInput,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
@@ -9,6 +8,7 @@ import type {
 import type { CaseStatus } from '@domdelo/domain';
 
 import type { AuthenticatedActor } from '../types.js';
+import type { VerifiedHouse } from '../services/address-provider.js';
 
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
@@ -33,7 +33,7 @@ export interface CaseRepository {
     maxChatId?: bigint;
   }): Promise<AuthenticatedActor>;
   getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto>;
-  addHouse(actor: AuthenticatedActor, input: AddHouseInput): Promise<HouseContextDto>;
+  addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto>;
   selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]>;
   getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;

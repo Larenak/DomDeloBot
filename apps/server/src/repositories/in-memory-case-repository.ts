@@ -1,5 +1,4 @@
 import type {
-  AddHouseInput,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
@@ -14,6 +13,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedActor } from '../types.js';
+import type { VerifiedHouse } from '../services/address-provider.js';
 import {
   AddressOnboardingRequiredError,
   ConflictError,
@@ -166,15 +166,11 @@ function normalizedAddressPart(value: string): string {
     .replace(/[^a-zа-я0-9]/giu, '');
 }
 
-function preparedAddress(input: AddHouseInput) {
-  const city = input.city.trim();
-  const street = input.street.trim();
-  const building = input.building.trim();
-  return {
-    address: `г. ${city}, ${street}, д. ${building}`,
-    normalizedAddress: [city, street, building].map(normalizedAddressPart).join('|'),
-  };
+function legacyAddressKey(input: VerifiedHouse): string {
+  return [input.city, input.street, input.building].map(normalizedAddressPart).join('|');
 }
+
+type StoredHouse = { id: string; address: string; normalizedAddress: string; isDemo: boolean; fiasId?: string };
 
 export class InMemoryCaseRepository implements CaseRepository {
   private readonly items = seedCases();
@@ -182,7 +178,7 @@ export class InMemoryCaseRepository implements CaseRepository {
   private readonly watchers = new Set<string>();
   private readonly webhookEvents = new Set<string>();
   private readonly idempotencyKeys = new Map<string, string>();
-  private readonly houses = new Map([
+  private readonly houses = new Map<string, StoredHouse>([
     [
       DEMO_HOUSE_ID,
       {
@@ -243,13 +239,24 @@ export class InMemoryCaseRepository implements CaseRepository {
     };
   }
 
-  async addHouse(actor: AuthenticatedActor, input: AddHouseInput): Promise<HouseContextDto> {
-    const prepared = preparedAddress(input);
+  async addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto> {
     let house = [...this.houses.values()].find(
-      (candidate) => candidate.normalizedAddress === prepared.normalizedAddress,
+      (candidate) => candidate.fiasId === input.fiasId,
     );
     if (!house) {
-      house = { id: randomUUID(), ...prepared, isDemo: false };
+      house = [...this.houses.values()].find(
+        (candidate) => !candidate.fiasId && candidate.normalizedAddress === legacyAddressKey(input),
+      );
+      if (house) {
+        house.fiasId = input.fiasId;
+        house.address = input.address;
+      }
+    }
+    if (!house) {
+      house = {
+        id: randomUUID(), address: input.address,
+        normalizedAddress: `gar|${input.fiasId}`, fiasId: input.fiasId, isDemo: false,
+      };
       this.houses.set(house.id, house);
     }
     const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();

@@ -1,5 +1,6 @@
 import type {
   AddHouseInput,
+  AddressSuggestionDto,
   CaseDto,
   CreateCaseInput,
   DuplicateSearchInput,
@@ -127,6 +128,8 @@ export const caseApi = {
 
 export const houseApi = {
   context: () => api<HouseContextDto>('/api/me/houses'),
+  suggest: (query: string, signal?: AbortSignal) =>
+    api<AddressSuggestionDto[]>(`/api/addresses/suggest?q=${encodeURIComponent(query)}`, signal ? { signal } : undefined),
   add: (input: AddHouseInput) =>
     api<HouseContextDto>('/api/me/houses', {
       method: 'POST',

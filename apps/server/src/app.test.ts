@@ -2,6 +2,26 @@ import { loadConfig } from '@domdelo/config';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildApp } from './app.js';
+import type { AddressProvider, VerifiedHouse } from './services/address-provider.js';
+
+const kazanId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
+const moscowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
+const knownHouses: Record<string, VerifiedHouse> = {
+  [kazanId]: {
+    fiasId: kazanId, address: 'г. Казань, ул. Спортивная, д. 12',
+    city: 'Казань', street: 'Спортивная', building: '12',
+  },
+  [moscowId]: {
+    fiasId: moscowId, address: 'г. Москва, ул. Тверская, д. 7',
+    city: 'Москва', street: 'Тверская', building: '7',
+  },
+};
+const addressProvider: AddressProvider = {
+  suggest: async (query) => Object.values(knownHouses)
+    .filter((house) => house.address.toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU')))
+    .map((house) => ({ value: house.address, fiasId: house.fiasId, isHouse: true })),
+  resolveHouse: async (fiasId) => knownHouses[fiasId] || null,
+};
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -14,7 +34,7 @@ const config = loadConfig({
 const openedApps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
 
 async function testApp() {
-  const app = await buildApp({ config });
+  const app = await buildApp({ config, addressProvider });
   openedApps.push(app);
   return app;
 }
@@ -27,7 +47,7 @@ async function addDemoHouse(
     method: 'POST',
     url: '/api/me/houses',
     headers: { 'x-demo-user': user },
-    payload: { city: 'Казань', street: 'Спортивная', building: '12' },
+    payload: { fiasId: kazanId },
   });
 }
 
@@ -86,6 +106,30 @@ describe('ДомДело API', () => {
     expect(cases.statusCode).toBe(200);
   });
 
+  it('suggests known addresses and rejects free text or unknown house identifiers', async () => {
+    const app = await testApp();
+    const suggestions = await app.inject({
+      method: 'GET', url: '/api/addresses/suggest?q=Казань',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(suggestions.statusCode).toBe(200);
+    expect(suggestions.json()).toContainEqual({
+      value: knownHouses[kazanId]!.address, fiasId: kazanId, isHouse: true,
+    });
+
+    const freeText = await app.inject({
+      method: 'POST', url: '/api/me/houses', headers: { 'x-demo-user': 'resident-1' },
+      payload: { city: 'Несуществующий', street: 'Выдуманная', building: '99' },
+    });
+    expect(freeText.statusCode).toBe(400);
+    const unknown = await app.inject({
+      method: 'POST', url: '/api/me/houses', headers: { 'x-demo-user': 'resident-1' },
+      payload: { fiasId: 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1' },
+    });
+    expect(unknown.statusCode).toBe(422);
+    expect(unknown.json()).toMatchObject({ error: 'address_not_found' });
+  });
+
   it('keeps cases isolated while a resident switches between favorite homes', async () => {
     const app = await testApp();
     const first = await addDemoHouse(app);
@@ -95,7 +139,7 @@ describe('ДомДело API', () => {
       method: 'POST',
       url: '/api/me/houses',
       headers: { 'x-demo-user': 'resident-1' },
-      payload: { city: 'Москва', street: 'Тверская', building: '7' },
+      payload: { fiasId: moscowId },
     });
     expect(second.json().houses).toHaveLength(2);
 

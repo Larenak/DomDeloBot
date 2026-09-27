@@ -7,6 +7,7 @@ export type AppConfig = {
   databaseUrl: string;
   maxApiBaseUrl: string;
   maxBotToken?: string;
+  dadataApiKey?: string;
   maxWebhookSecret?: string;
   maxDeliveryMode: 'webhook' | 'polling' | 'disabled';
   maxPollingRemoveWebhookSubscriptions: boolean;
@@ -133,6 +134,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: env.DATABASE_URL || 'postgres://domdelo:domdelo@localhost:5432/domdelo',
     maxApiBaseUrl: env.MAX_API_BASE_URL || 'https://platform-api2.max.ru',
     ...(env.MAX_BOT_TOKEN ? { maxBotToken: env.MAX_BOT_TOKEN } : {}),
+    ...(env.DADATA_API_KEY ? { dadataApiKey: env.DADATA_API_KEY } : {}),
     ...(env.MAX_WEBHOOK_SECRET ? { maxWebhookSecret: env.MAX_WEBHOOK_SECRET } : {}),
     maxDeliveryMode,
     maxPollingRemoveWebhookSubscriptions: booleanValue(

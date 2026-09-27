@@ -2,6 +2,7 @@ import { loadConfig } from '@domdelo/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildApp } from '../../app.js';
+import { demoActors } from '../../repositories/in-memory-case-repository.js';
 import type { BotMessageOptions, BotNotifier } from '../../services/max-notifier.js';
 import { parseCaseDescription } from './bot-conversation.js';
 
@@ -42,6 +43,8 @@ async function addMaxHouse(
 ) {
   const actor = await app.caseRepository.resolveMaxUser({ maxUserId, displayName });
   await app.caseRepository.addHouse(actor, {
+    fiasId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    address: 'г. Казань, ул. Спортивная, д. 12',
     city: 'Казань',
     street: 'Спортивная',
     building: '12',
@@ -304,11 +307,10 @@ describe('MAX bot conversation', () => {
       payload: 'case_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
 
-    await app.inject({
-      method: 'POST',
-      url: '/api/me/houses',
-      headers: { 'x-demo-user': 'resident-1' },
-      payload: { city: 'Казань', street: 'Спортивная', building: '12' },
+    await app.caseRepository.addHouse(demoActors['resident-1']!, {
+      fiasId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+      address: 'г. Казань, ул. Спортивная, д. 12',
+      city: 'Казань', street: 'Спортивная', building: '12',
     });
     const caseResponse = await app.inject({
       method: 'GET',

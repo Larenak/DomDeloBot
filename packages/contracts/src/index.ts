@@ -43,14 +43,19 @@ export const HouseContextSchema = Type.Object({
 });
 
 export const AddHouseSchema = Type.Object({
-  city: Type.String({ minLength: 2, maxLength: 100, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
-  street: Type.String({ minLength: 2, maxLength: 120, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
-  building: Type.String({ minLength: 1, maxLength: 30, pattern: '.*[A-Za-zА-Яа-яЁё0-9].*' }),
+  fiasId: Type.String({ format: 'uuid' }),
+});
+
+export const AddressSuggestionSchema = Type.Object({
+  value: Type.String(),
+  isHouse: Type.Boolean(),
+  fiasId: Type.Optional(Type.String({ format: 'uuid' })),
 });
 
 export type HouseDto = Static<typeof HouseSchema>;
 export type HouseContextDto = Static<typeof HouseContextSchema>;
 export type AddHouseInput = Static<typeof AddHouseSchema>;
+export type AddressSuggestionDto = Static<typeof AddressSuggestionSchema>;
 
 export const CaseHistoryItemSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),

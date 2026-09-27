@@ -1,5 +1,4 @@
 import type {
-  AddHouseInput,
   CaseCategory,
   CaseDto,
   CreateCaseInput,
@@ -8,7 +7,7 @@ import type {
   TransitionCaseInput,
 } from '@domdelo/contracts';
 import { assertTransitionAllowed, type CaseStatus } from '@domdelo/domain';
-import { and, count, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, ne, sql } from 'drizzle-orm';
 
 import type { Database } from '../db/client.js';
 import {
@@ -28,6 +27,7 @@ import {
 } from '../db/schema.js';
 import type { AuthenticatedActor } from '../types.js';
 import type { ObjectStorage } from '../services/object-storage.js';
+import type { VerifiedHouse } from '../services/address-provider.js';
 import {
   AddressOnboardingRequiredError,
   ConflictError,
@@ -53,14 +53,8 @@ function normalizedAddressPart(value: string): string {
     .replace(/[^a-zа-я0-9]/giu, '');
 }
 
-function houseAddress(input: AddHouseInput): { address: string; normalizedAddress: string } {
-  const city = input.city.trim();
-  const street = input.street.trim();
-  const building = input.building.trim();
-  return {
-    address: `г. ${city}, ${street}, д. ${building}`,
-    normalizedAddress: [city, street, building].map(normalizedAddressPart).join('|'),
-  };
+function legacyAddressKey(input: VerifiedHouse): string {
+  return [input.city, input.street, input.building].map(normalizedAddressPart).join('|');
 }
 
 function activeHouseId(actor: AuthenticatedActor): string {
@@ -170,28 +164,38 @@ export class PostgresCaseRepository implements CaseRepository {
     };
   }
 
-  async addHouse(actor: AuthenticatedActor, input: AddHouseInput): Promise<HouseContextDto> {
-    const prepared = houseAddress(input);
+  async addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto> {
     const selected = await this.db.transaction(async (tx) => {
-      const [house] = await tx
-        .insert(houses)
-        .values(prepared)
-        .onConflictDoUpdate({
-          target: houses.normalizedAddress,
-          set: { address: prepared.address },
-        })
-        .returning({ id: houses.id });
-      if (!house) throw new Error('Не удалось сохранить адрес');
+      const [known] = await tx.select({ id: houses.id }).from(houses)
+        .where(eq(houses.fiasId, input.fiasId)).limit(1);
+      const [legacy] = known ? [] : await tx.select({ id: houses.id }).from(houses)
+        .where(and(eq(houses.normalizedAddress, legacyAddressKey(input)), isNull(houses.fiasId)))
+        .limit(1);
+      let houseId = known?.id || legacy?.id;
+      if (legacy) {
+        await tx.update(houses).set({ fiasId: input.fiasId, address: input.address })
+          .where(eq(houses.id, legacy.id));
+      }
+      if (!houseId) {
+        const [house] = await tx.insert(houses).values({
+          fiasId: input.fiasId,
+          address: input.address,
+          normalizedAddress: `gar|${input.fiasId}`,
+        }).onConflictDoUpdate({ target: houses.fiasId, set: { address: input.address } })
+          .returning({ id: houses.id });
+        if (!house) throw new Error('Не удалось сохранить адрес');
+        houseId = house.id;
+      }
       const now = new Date();
       await tx
         .insert(houseMembers)
-        .values({ houseId: house.id, userId: actor.id, isFavorite: true, lastUsedAt: now })
+        .values({ houseId, userId: actor.id, isFavorite: true, lastUsedAt: now })
         .onConflictDoUpdate({
           target: [houseMembers.houseId, houseMembers.userId],
           set: { isFavorite: true, lastUsedAt: now },
         });
-      await tx.update(users).set({ activeHouseId: house.id }).where(eq(users.id, actor.id));
-      return house.id;
+      await tx.update(users).set({ activeHouseId: houseId }).where(eq(users.id, actor.id));
+      return houseId;
     });
     actor.houseId = selected;
     return this.getHouseContext(actor);

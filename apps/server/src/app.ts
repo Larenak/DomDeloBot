@@ -30,6 +30,7 @@ import {
   S3ObjectStorage,
   type ObjectStorage,
 } from './services/object-storage.js';
+import { AddressProviderUnavailableError, DadataAddressProvider, type AddressProvider } from './services/address-provider.js';
 import './types.js';
 
 type BuildAppOptions = {
@@ -37,6 +38,7 @@ type BuildAppOptions = {
   caseRepository?: CaseRepository;
   objectStorage?: ObjectStorage;
   notifier?: BotNotifier;
+  addressProvider?: AddressProvider;
 };
 
 export async function buildApp(options: BuildAppOptions) {
@@ -118,7 +120,7 @@ export async function buildApp(options: BuildAppOptions) {
 
   await registerAuth(app);
   await registerHealthRoutes(app);
-  await registerHouseRoutes(app);
+  await registerHouseRoutes(app, options.addressProvider || new DadataAddressProvider(options.config.dadataApiKey));
   await registerCaseRoutes(app);
   await registerWebhookRoutes(app, notifier);
 
@@ -155,6 +157,10 @@ export async function buildApp(options: BuildAppOptions) {
     const requestId = request.id;
     if (error instanceof NotFoundError) {
       return reply.code(404).send({ error: 'not_found', message: error.message, requestId });
+    }
+    if (error instanceof AddressProviderUnavailableError) {
+      request.log.error({ error }, 'address provider unavailable');
+      return reply.code(503).send({ error: 'address_provider_unavailable', message: error.message, requestId });
     }
     if (error instanceof AddressOnboardingRequiredError) {
       return reply.code(403).send({

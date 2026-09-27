@@ -39,10 +39,14 @@ export const houses = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     address: text('address').notNull(),
     normalizedAddress: text('normalized_address').notNull(),
+    fiasId: uuid('fias_id'),
     isDemo: boolean('is_demo').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('houses_normalized_address_unique').on(table.normalizedAddress)],
+  (table) => [
+    uniqueIndex('houses_normalized_address_unique').on(table.normalizedAddress),
+    uniqueIndex('houses_fias_id_unique').on(table.fiasId),
+  ],
 );
 
 export const users = pgTable(
