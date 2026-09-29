@@ -108,4 +108,23 @@ export async function registerHouseRoutes(app: FastifyInstance, addressProvider:
       return app.caseRepository.selectHouse(request.actor!, houseId);
     },
   );
+
+  app.delete(
+    '/api/me/houses/:houseId',
+    {
+      ...secured,
+      schema: {
+        tags: ['houses'], security,
+        params: {
+          type: 'object', required: ['houseId'],
+          properties: { houseId: { type: 'string', format: 'uuid' } },
+        },
+        response: { 200: HouseContextSchema, 401: ErrorSchema, 404: ErrorSchema },
+      },
+    },
+    async (request) => {
+      const { houseId } = request.params as { houseId: string };
+      return app.caseRepository.removeHouse(request.actor!, houseId);
+    },
+  );
 }

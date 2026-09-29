@@ -168,6 +168,9 @@ paths:
                           type: string
                         address:
                           type: string
+                        fiasId:
+                          format: uuid
+                          type: string
                         isActive:
                           type: boolean
                         isDemo:
@@ -263,6 +266,9 @@ paths:
                           format: uuid
                           type: string
                         address:
+                          type: string
+                        fiasId:
+                          format: uuid
                           type: string
                         isActive:
                           type: boolean
@@ -381,6 +387,9 @@ paths:
                           type: string
                         address:
                           type: string
+                        fiasId:
+                          format: uuid
+                          type: string
                         isActive:
                           type: boolean
                         isDemo:
@@ -489,6 +498,9 @@ paths:
                           type: string
                         address:
                           type: string
+                        fiasId:
+                          format: uuid
+                          type: string
                         isActive:
                           type: boolean
                         isDemo:
@@ -543,6 +555,117 @@ paths:
                   requestId:
                     type: string
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/me/houses/{houseId}:
+    delete:
+      tags:
+        - houses
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: houseId
+          required: true
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                  - accessPending
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        fiasId:
+                          format: uuid
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  activeRole:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - resident
+                      - type: string
+                        enum:
+                          - owner
+                      - type: string
+                        enum:
+                          - tenant
+                      - type: string
+                        enum:
+                          - chair
+                      - type: string
+                        enum:
+                          - dispatcher
+                      - type: string
+                        enum:
+                          - executor
+                      - type: string
+                        enum:
+                          - authority
+                      - type: string
+                        enum:
+                          - admin
+                  onboardingRequired:
+                    type: boolean
+                  accessPending:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "404":
           description: Default Response
           content:
             application/json:
@@ -1250,6 +1373,22 @@ paths:
                     type: string
                   requestId:
                     type: string
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/cases/{caseId}:
     get:
       tags:
@@ -1772,6 +1911,22 @@ paths:
                           createdAt:
                             format: date-time
                             type: string
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/cases/{caseId}/confirmations:
     post:
       tags:
@@ -2764,6 +2919,22 @@ paths:
                     type: string
                   requestId:
                     type: string
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/cases/{caseId}/attachments:
     post:
       tags:
@@ -3069,6 +3240,22 @@ paths:
                     type: string
                   requestId:
                     type: string
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/polls:
     get:
       tags:
@@ -3352,6 +3539,139 @@ paths:
                     type: string
                   requestId:
                     type: string
+  /api/services/house:
+    get:
+      tags:
+        - services
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houseId
+                  - management
+                  - overhaul
+                properties:
+                  houseId:
+                    format: uuid
+                    type: string
+                  management:
+                    type: object
+                    required:
+                      - status
+                      - sourceUrl
+                      - snapshotDate
+                    properties:
+                      status:
+                        anyOf:
+                          - type: string
+                            enum:
+                              - found
+                          - type: string
+                            enum:
+                              - missing
+                          - type: string
+                            enum:
+                              - unavailable
+                      name:
+                        type: string
+                      managementType:
+                        type: string
+                      organizationUrl:
+                        type: string
+                      sourceUrl:
+                        type: string
+                      snapshotDate:
+                        type: string
+                  overhaul:
+                    type: object
+                    required:
+                      - status
+                      - sourceUrl
+                      - works
+                    properties:
+                      status:
+                        anyOf:
+                          - type: string
+                            enum:
+                              - found
+                          - type: string
+                            enum:
+                              - missing
+                          - type: string
+                            enum:
+                              - unavailable
+                      sourceUrl:
+                        type: string
+                      worksSourceUrl:
+                        type: string
+                      snapshotDate:
+                        type: string
+                      updatedAt:
+                        type: string
+                      fundingMethod:
+                        type: string
+                      fundBalanceThousandRub:
+                        minimum: 0
+                        type: number
+                      contributionRubPerSqM:
+                        minimum: 0
+                        type: number
+                      includedAt:
+                        type: string
+                      works:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - type
+                          properties:
+                            type:
+                              type: string
+                            plannedYear:
+                              type: string
+                            completedDate:
+                              type: string
+                            contractor:
+                              type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /webhooks/max:
     post:
       tags:
@@ -3416,6 +3736,7 @@ tags:
   - name: houses
   - name: cases
   - name: polls
+  - name: services
   - name: case-workflow
   - name: attachments
   - name: MAX webhook

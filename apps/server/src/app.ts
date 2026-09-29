@@ -15,6 +15,7 @@ import { registerHouseRoutes } from './modules/houses/routes.js';
 import { registerPollRoutes } from './modules/polls/routes.js';
 import { registerServiceRoutes } from './modules/services/routes.js';
 import { startOutboxWorker } from './modules/outbox/worker.js';
+import { startHouseManagementWorker } from './modules/outbox/house-management.js';
 import { registerWebhookRoutes } from './modules/webhook/routes.js';
 import {
   AddressOnboardingRequiredError,
@@ -71,6 +72,7 @@ export async function buildApp(options: BuildAppOptions) {
 
   const notifier = options.notifier || new MaxNotifier(options.config.maxBotToken, options.config.maxApiBaseUrl);
   let stopOutboxWorker: (() => void) | undefined;
+  let stopManagementWorker: (() => void) | undefined;
 
   if (options.caseRepository) {
     app.decorate('caseRepository', options.caseRepository);
@@ -83,6 +85,7 @@ export async function buildApp(options: BuildAppOptions) {
       options.config.demoMode,
     ));
     stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
+    stopManagementWorker = startHouseManagementWorker(database!.db, notifier, app.log);
   }
   app.decorate('pollRepository', options.pollRepository || (
     options.config.storageMode === 'memory'
@@ -92,6 +95,7 @@ export async function buildApp(options: BuildAppOptions) {
   if (database) {
     app.addHook('onClose', async () => {
       stopOutboxWorker?.();
+      stopManagementWorker?.();
       await database.client.end();
     });
   }

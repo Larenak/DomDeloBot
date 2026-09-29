@@ -304,3 +304,22 @@ export const auditLog = pgTable('audit_log', {
   metadata: jsonb('metadata').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Only an operator-verified service account may be removed when management changes.
+export const houseManagement = pgTable('house_management', {
+  houseId: uuid('house_id').primaryKey().references(() => houses.id, { onDelete: 'cascade' }),
+  organizationName: text('organization_name'),
+  serviceMaxUserId: bigint('service_max_user_id', { mode: 'bigint' }),
+  previousServiceMaxUserId: bigint('previous_service_max_user_id', { mode: 'bigint' }),
+  revision: integer('revision').notNull().default(0),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+});
+
+export const chatManagementChecks = pgTable('chat_management_checks', {
+  maxChatId: bigint('max_chat_id', { mode: 'bigint' }).primaryKey().references(() => chatBindings.maxChatId, { onDelete: 'cascade' }),
+  checkedAt: timestamp('checked_at', { withTimezone: true }),
+  announcedRevision: integer('announced_revision').notNull().default(0),
+  presence: text('presence'),
+  missingNoticeId: text('missing_notice_id'),
+  previousRemovedRevision: integer('previous_removed_revision').notNull().default(0),
+});

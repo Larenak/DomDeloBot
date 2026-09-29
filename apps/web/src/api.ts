@@ -161,6 +161,8 @@ export const houseApi = {
     }),
   select: (houseId: string) =>
     api<HouseContextDto>(`/api/me/houses/${houseId}/select`, { method: 'POST' }),
+  remove: (houseId: string) =>
+    api<HouseContextDto>(`/api/me/houses/${houseId}`, { method: 'DELETE' }),
   joinDemo: () => api<HouseContextDto>('/api/me/houses/demo', { method: 'POST' }),
 };
 export const serviceApi = {

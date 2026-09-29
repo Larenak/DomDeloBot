@@ -26,8 +26,8 @@ export function InviteRegistrationForm() {
   };
 
   return <section className="form-card invite-registration">
-    <h2>Личное приглашение</h2>
-    <p>Для доступа жильца, диспетчера или исполнителя к рабочему дому нужен личный код. Администратор выдаёт его после проверки проживания или полномочий. Роль и дом уже привязаны к коду.</p>
+    <h2>Служебное приглашение</h2>
+    <p>Жильцу код не нужен. Для роли диспетчера или исполнителя администратор выдаёт личный код после проверки полномочий.</p>
     {identity.data?.actor.maxUserId ? <p className="form-hint">Ваш MAX ID для администратора: <strong>{identity.data.actor.maxUserId}</strong></p> : null}
     {identity.isError ? <p className="form-error">{identity.error.message}</p> : null}
     <form onSubmit={submit}>
@@ -42,7 +42,7 @@ export function InviteRegistrationForm() {
         maxLength={43}
       />
       <button className="button button--primary button--wide" disabled={redeem.isPending || code.trim().length !== 43}>
-        {redeem.isPending ? 'Проверяем приглашение…' : 'Зарегистрироваться'}
+        {redeem.isPending ? 'Проверяем приглашение…' : 'Применить служебный код'}
       </button>
     </form>
     {redeem.isError ? <p className="form-error" role="alert">{redeem.error.message}</p> : null}

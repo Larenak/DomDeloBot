@@ -26,9 +26,10 @@ export function startOutboxWorker(
       for (const event of events) {
         try {
           const targets = await db
-            .select({ chatId: chatBindings.maxChatId, caseNumber: cases.number })
+            .select({ chatId: chatBindings.maxChatId, caseNumber: cases.number, address: houses.address })
             .from(cases)
             .innerJoin(chatBindings, eq(cases.houseId, chatBindings.houseId))
+            .innerJoin(houses, eq(cases.houseId, houses.id))
             .where(eq(cases.id, event.aggregateId));
           if (targets.length === 0) {
             const [house] = await db
@@ -47,8 +48,8 @@ export function startOutboxWorker(
                 eq(outboxDeliveries.maxChatId, target.chatId))).limit(1);
             if (delivered) continue;
             const message = payload.toStatus
-              ? `**Дело №${target.caseNumber}**\nНовый статус: ${caseStatusLabels[payload.toStatus]}`
-              : `**Дело №${target.caseNumber} зарегистрировано**\nОткройте мини-приложение, чтобы посмотреть детали.`;
+              ? `Дом ${target.address}: дело №${target.caseNumber}. Новый статус: ${caseStatusLabels[payload.toStatus]}.`
+              : `Новая проблема по адресу ${target.address}: дело №${target.caseNumber}. Откройте мини-приложение, чтобы посмотреть детали.`;
             await notifier.sendToChat(Number(target.chatId), message);
             await db.insert(outboxDeliveries).values({
               eventId: event.id, maxChatId: target.chatId,

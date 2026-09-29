@@ -8,7 +8,6 @@ import { CaseDetailPage } from './pages/CaseDetailPage.js';
 import { ComplaintDraftPage } from './pages/ComplaintDraftPage.js';
 import { CasesPage } from './pages/CasesPage.js';
 import { DispatcherPage } from './pages/DispatcherPage.js';
-import { HouseAccessPendingPage } from './pages/HouseAccessPendingPage.js';
 import { HouseOnboardingPage } from './pages/HouseOnboardingPage.js';
 import { HousesPage } from './pages/HousesPage.js';
 import { NewCasePage } from './pages/NewCasePage.js';
@@ -175,6 +174,5 @@ export default function App({ demoMode, demoHouseAvailable = false }: { demoMode
     );
   }
   if (query.data.onboardingRequired) return <HouseOnboardingPage demoHouseAvailable={demoHouseAvailable} />;
-  if (query.data.accessPending) return <HouseAccessPendingPage houses={query.data.houses} demoHouseAvailable={demoHouseAvailable} />;
   return <AppShell demoMode={demoMode} />;
 }

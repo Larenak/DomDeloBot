@@ -119,7 +119,6 @@ export class PostgresCaseRepository implements CaseRepository {
       isDemoHouse = membership?.isDemo ?? false;
     }
     const verifiedRole = houseId ? await this.getActiveRole(houseId, user.id) : undefined;
-    if (!this.demoMode && !isDemoHouse && !verifiedRole) houseId = undefined;
     return {
       id: user.id,
       role: verifiedRole ?? 'resident',
@@ -177,8 +176,7 @@ export class PostgresCaseRepository implements CaseRepository {
       .orderBy(desc(houseMembers.lastUsedAt), houses.address);
     const selectedHouse = rows.find((row) => row.id === actor.houseId);
     const activeGrant = selectedHouse ? await this.getActiveRole(selectedHouse.id, actor.id) : undefined;
-    const activeId = selectedHouse && (this.demoMode || selectedHouse.isDemo || activeGrant)
-      ? selectedHouse.id : undefined;
+    const activeId = selectedHouse?.id;
     return {
       houses: rows.map((row) => ({
         id: row.id,
@@ -189,7 +187,7 @@ export class PostgresCaseRepository implements CaseRepository {
       })),
       ...(activeId ? { activeHouseId: activeId, activeRole: selectedHouse?.isDemo ? actor.role : activeGrant ?? actor.role } : {}),
       onboardingRequired: rows.length === 0,
-      accessPending: rows.length > 0 && !activeId && !this.demoMode,
+      accessPending: false,
     };
   }
 
@@ -270,6 +268,28 @@ export class PostgresCaseRepository implements CaseRepository {
         .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.houseId, houseId))),
     ]);
     actor.houseId = houseId;
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async removeHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    await this.db.transaction(async (tx) => {
+      const [removed] = await tx.delete(houseMembers)
+        .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.houseId, houseId)))
+        .returning({ houseId: houseMembers.houseId });
+      if (!removed) throw new NotFoundError('Адрес не найден в вашем профиле');
+      await tx.update(houseRoleGrants).set({ revokedAt: new Date() })
+        .where(and(eq(houseRoleGrants.userId, actor.id), eq(houseRoleGrants.houseId, houseId)));
+      const [user] = await tx.select({ activeHouseId: users.activeHouseId })
+        .from(users).where(eq(users.id, actor.id)).limit(1);
+      if (user?.activeHouseId === houseId) {
+        const [next] = await tx.select({ houseId: houseMembers.houseId })
+          .from(houseMembers)
+          .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.isFavorite, true)))
+          .orderBy(desc(houseMembers.lastUsedAt)).limit(1);
+        await tx.update(users).set({ activeHouseId: next?.houseId ?? null })
+          .where(eq(users.id, actor.id));
+      }
+    });
     return this.getHouseContext(await this.refreshActor(actor));
   }
 

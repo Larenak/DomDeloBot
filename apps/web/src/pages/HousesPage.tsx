@@ -18,13 +18,25 @@ export function HousesPage() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: houseApi.remove,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['house-context'] }),
+        queryClient.invalidateQueries({ queryKey: ['cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['polls'] }),
+        queryClient.invalidateQueries({ queryKey: ['house-report'] }),
+      ]);
+    },
+  });
+
   return (
     <main className="page page--narrow">
       <section className="hero hero--houses">
         <div>
           <span className="eyebrow">Мои адреса</span>
           <h1>Ваши дома</h1>
-          <p>Добавляйте адреса и выбирайте дом, дела которого хотите видеть сейчас.</p>
+          <p>Добавляйте адреса без кода, выбирайте текущий дом и смотрите его дела.</p>
         </div>
       </section>
 
@@ -40,20 +52,34 @@ export function HousesPage() {
                 <span>{house.isActive ? 'Текущий дом' : 'Добавлен в избранное'}</span>
                 <strong>{house.address}</strong>
               </div>
-              {house.isActive ? (
-                <span className="active-house-badge">Выбран</span>
-              ) : (
+              <div className="house-card__actions">
+                {house.isActive ? (
+                  <span className="active-house-badge">Выбран</span>
+                ) : (
+                  <button
+                    className="button button--secondary button--small"
+                    disabled={select.isPending || remove.isPending}
+                    onClick={() => select.mutate(house.id)}
+                  >
+                    Выбрать
+                  </button>
+                )}
                 <button
-                  className="button button--secondary button--small"
-                  disabled={select.isPending}
-                  onClick={() => select.mutate(house.id)}
+                  className="button button--danger button--small"
+                  disabled={remove.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Удалить адрес «${house.address}» из профиля? Доступ к этому дому будет отозван.`)) {
+                      remove.mutate(house.id);
+                    }
+                  }}
                 >
-                  Выбрать
+                  Удалить
                 </button>
-              )}
+              </div>
             </article>
           ))}
           {select.isError ? <p className="form-error">{select.error.message}</p> : null}
+          {remove.isError ? <p className="form-error" role="alert">{remove.error.message}</p> : null}
         </section>
       ) : null}
 

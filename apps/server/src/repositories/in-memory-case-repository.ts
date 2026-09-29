@@ -243,8 +243,9 @@ export class InMemoryCaseRepository implements CaseRepository {
   async refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor> {
     const demo = Object.values(demoActors).find((known) => known.id === actor.id);
     const houseId = this.activeHouseIds.get(actor.id);
+    const { houseId: _previousHouseId, ...identity } = actor;
     return {
-      ...actor,
+      ...identity,
       ...(houseId ? { houseId } : {}),
       role: houseId === DEMO_HOUSE_ID ? demo?.role ?? 'resident' : 'resident',
       isDemoHouse: houseId === DEMO_HOUSE_ID,
@@ -329,6 +330,17 @@ export class InMemoryCaseRepository implements CaseRepository {
     }
     actor.houseId = houseId;
     this.activeHouseIds.set(actor.id, houseId);
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async removeHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    const favorites = this.favoriteHouses.get(actor.id);
+    if (!favorites?.delete(houseId)) throw new NotFoundError('Адрес не найден в вашем профиле');
+    if (this.activeHouseIds.get(actor.id) === houseId) {
+      const next = favorites.values().next().value as string | undefined;
+      if (next) this.activeHouseIds.set(actor.id, next);
+      else this.activeHouseIds.delete(actor.id);
+    }
     return this.getHouseContext(await this.refreshActor(actor));
   }
 

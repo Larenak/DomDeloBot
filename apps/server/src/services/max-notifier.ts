@@ -16,6 +16,11 @@ export interface BotNotifier {
   sendToChat(chatId: number, message: string, options?: BotMessageOptions): Promise<void>;
   sendToUser(userId: number, message: string, options?: BotMessageOptions): Promise<void>;
   answerCallback(callbackId: string, message?: string): Promise<void>;
+  chatMembers(chatId: number, userIds: number[]): Promise<number[]>;
+  postToChat(chatId: number, message: string): Promise<string>;
+  pinChatMessage(chatId: number, messageId: string): Promise<void>;
+  removeChatMember(chatId: number, userId: number): Promise<void>;
+  clearMissingPin(chatId: number, messageId: string): Promise<void>;
 }
 
 export const maxUpdateTypes: UpdateType[] = ['bot_started', 'message_created', 'message_callback'];
@@ -59,6 +64,35 @@ export class MaxNotifier implements BotNotifier {
     await this.bot.api.sendMessageToChat(chatId, message, this.messageExtra(options));
   }
 
+  async chatMembers(chatId: number, userIds: number[]): Promise<number[]> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    if (!userIds.length) return [];
+    const result = await this.bot.api.getChatMembers(chatId, { user_ids: userIds });
+    return result.members.map((member) => member.user_id);
+  }
+
+  async postToChat(chatId: number, message: string): Promise<string> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    const sent = await this.bot.api.sendMessageToChat(chatId, message, this.messageExtra());
+    return sent.body.mid;
+  }
+
+  async pinChatMessage(chatId: number, messageId: string): Promise<void> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    const result = await this.bot.api.pinMessage(chatId, messageId);
+    if (!result.success) throw new Error(result.message || 'MAX не закрепил сообщение');
+  }
+
+  async removeChatMember(chatId: number, userId: number): Promise<void> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    const result = await this.bot.api.removeChatMember(chatId, userId);
+    if (!result.success) throw new Error(result.message || 'MAX не удалил участника');
+  }
+  async clearMissingPin(chatId: number, messageId: string): Promise<void> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    const pinned = await this.bot.api.getPinnedMessage(chatId);
+    if (pinned.message?.body.mid === messageId) await this.bot.api.unpinMessage(chatId);
+  }
   async sendToUser(userId: number, message: string, options?: BotMessageOptions): Promise<void> {
     if (!this.bot) return;
     await this.bot.api.sendMessageToUser(userId, message, this.messageExtra(options));

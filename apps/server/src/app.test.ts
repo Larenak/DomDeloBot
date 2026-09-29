@@ -203,6 +203,9 @@ describe('ДомДело API', () => {
       payload: { fiasId: moscowId } });
     expect(realHouse.statusCode).toBe(200);
     expect(realHouse.json().activeRole).toBe('resident');
+    expect(realHouse.json().accessPending).toBe(false);
+    const openCases = await app.inject({ method: 'GET', url: '/api/cases', headers });
+    expect(openCases.statusCode).toBe(200);
     const denied = await app.inject({ method: 'GET', url: '/api/reports/house',
       headers: { ...headers, 'x-demo-role': 'authority' } });
     expect(denied.statusCode).toBe(403);
@@ -263,6 +266,38 @@ describe('ДомДело API', () => {
       headers: { 'x-demo-user': 'resident-1' },
     });
     expect(originalHouseCases.json()).toHaveLength(2);
+  });
+
+  it('removes a home only from its owner, switches to another, and revokes access after the last removal', async () => {
+    const app = await testApp();
+    const first = await addDemoHouse(app);
+    const firstHouseId = first.json().activeHouseId as string;
+    const second = await app.inject({
+      method: 'POST', url: '/api/me/houses', headers: { 'x-demo-user': 'resident-1' },
+      payload: { fiasId: moscowId },
+    });
+    const secondHouseId = second.json().activeHouseId as string;
+    const otherUser = await app.inject({
+      method: 'DELETE', url: `/api/me/houses/${secondHouseId}`,
+      headers: { 'x-demo-user': 'resident-2' },
+    });
+    expect(otherUser.statusCode).toBe(404);
+    const removed = await app.inject({
+      method: 'DELETE', url: `/api/me/houses/${secondHouseId}`,
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json()).toMatchObject({ activeHouseId: firstHouseId, onboardingRequired: false });
+    expect(removed.json().houses).toHaveLength(1);
+    const removedLast = await app.inject({
+      method: 'DELETE', url: `/api/me/houses/${firstHouseId}`,
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(removedLast.json()).toMatchObject({ houses: [], onboardingRequired: true });
+    const denied = await app.inject({
+      method: 'GET', url: '/api/cases', headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(denied.statusCode).toBe(403);
   });
 
   it('finds a similar open case before creating a duplicate', async () => {

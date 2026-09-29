@@ -50,6 +50,13 @@
       "when": 1790663475920,
       "tag": "0006_strong_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790697197000,
+      "tag": "0007_woozy_living_tribunal",
+      "breakpoints": true
     }
   ]
 }

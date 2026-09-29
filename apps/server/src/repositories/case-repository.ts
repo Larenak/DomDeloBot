@@ -37,6 +37,7 @@ export interface CaseRepository {
   addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto>;
   joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
+  removeHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]>;
   getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto>;
   getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
