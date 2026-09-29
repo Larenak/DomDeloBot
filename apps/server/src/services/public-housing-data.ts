@@ -8,6 +8,7 @@ import type { AddressProvider } from './address-provider.js';
 const FRT = 'https://xn--80adsazqn.xn--p1aee.xn--p1ai';
 const UK_SOURCE = 'https://tochno.st/datasets/gisgkh';
 const INDEX = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'data', 'uk');
+const OVERHAUL_INDEX = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'data', 'overhaul');
 const FIAS = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const ALIASES: Record<string, string> = {
   'Кемеровская область': 'Кемеровская область - Кузбасс',
@@ -55,6 +56,10 @@ type UkRecord = [string, string, string, string, string];
 type Row = Record<string, string>;
 type Reports = { house: string; works?: string | undefined; loadedAt: number };
 type WarningLogger = { warn: (details: Record<string, unknown>, message: string) => void };
+type SnapshotRecord = [string, string | null, string | null, number | null, number | null, string | null,
+  [string, string | null, string | null, string | null][]];
+type SnapshotRegion = { file: string; houseSourceUrl: string; worksSourceUrl?: string; snapshotDate?: string };
+type SnapshotManifest = Record<string, SnapshotRegion>;
 
 async function textFrom(url: string): Promise<string> {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -65,13 +70,13 @@ async function textFrom(url: string): Promise<string> {
   return text;
 }
 
-function normalizeRegion(value: string): string {
+export function normalizeRegion(value: string): string {
   return value.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е')
     .replace(/(?:респ(?:ублика)?|обл(?:асть)?|город|г\.|автономный округ|ао)/g, '')
     .replace(/[^а-яa-z0-9]/g, '');
 }
 
-function reportLinks(html: string): Map<string, string> {
+export function reportLinks(html: string): Map<string, string> {
   const links = new Map<string, string>();
   // Titles and export buttons are in the same card, but the site's CSS classes change.
   const titles = [...html.matchAll(/КР\s*1[.\-]\s*([13])/gi)];
@@ -106,7 +111,7 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
-async function scanZipCsv(url: string, visit: (row: Row) => void): Promise<string | undefined> {
+export async function scanZipCsv(url: string, visit: (row: Row) => void): Promise<string | undefined> {
   const response = await fetch(url, { signal: AbortSignal.timeout(90_000) });
   if (!response.ok) throw new Error('Source returned ' + response.status);
   const zip = Buffer.from(await response.arrayBuffer());
@@ -163,10 +168,13 @@ export class PublicHousingDataProvider {
   constructor(
     private readonly addressProvider?: AddressProvider,
     private readonly logger?: WarningLogger,
+    private readonly snapshotDirectory: string | null = OVERHAUL_INDEX,
   ) {}
   private ukCache = new Map<string, Map<string, UkRecord[]>>();
   private regionIds?: { values: Map<string, string>; loadedAt: number };
   private reports = new Map<string, Reports>();
+  private snapshotManifest?: SnapshotManifest;
+  private snapshotCache = new Map<string, Map<string, SnapshotRecord>>();
   private resultCache = new Map<string, { data: PublicHousingData; loadedAt: number }>();
   private pending = new Map<string, Promise<PublicHousingData>>();
 
@@ -221,6 +229,41 @@ export class PublicHousingDataProvider {
     return reports;
   }
 
+  private async snapshot(region: string, fiasId: string): Promise<OverhaulData | undefined> {
+    if (!this.snapshotDirectory) return undefined;
+    if (!this.snapshotManifest) {
+      try { this.snapshotManifest = JSON.parse(await readFile(join(this.snapshotDirectory, 'manifest.json'), 'utf8')) as SnapshotManifest; }
+      catch { this.snapshotManifest = {}; }
+    }
+    const info = this.snapshotManifest[normalizeRegion(ALIASES[region] || region)];
+    if (!info) return undefined;
+    const bucket = fiasId.slice(0, 2);
+    let rows = this.snapshotCache.get(bucket);
+    if (!rows) {
+      rows = new Map();
+      const data = gunzipSync(await readFile(join(this.snapshotDirectory, 'buckets', bucket + '.ndjson.gz'))).toString('utf8');
+      for (const line of data.split('\n')) {
+        if (!line) continue;
+        const row = JSON.parse(line) as SnapshotRecord;
+        rows.set(row[0], row);
+      }
+      this.snapshotCache.set(bucket, rows);
+      if (this.snapshotCache.size > 4) this.snapshotCache.delete(this.snapshotCache.keys().next().value!);
+    }
+    const row = rows.get(fiasId);
+    if (!row) return { status: 'missing', sourceUrl: info.houseSourceUrl, snapshotDate: info.snapshotDate, works: [] };
+    return {
+      status: 'found', sourceUrl: info.houseSourceUrl, worksSourceUrl: info.worksSourceUrl,
+      snapshotDate: info.snapshotDate, updatedAt: row[1] || undefined, fundingMethod: row[2] || undefined,
+      fundBalanceThousandRub: row[3] ?? undefined, contributionRubPerSqM: row[4] ?? undefined,
+      includedAt: row[5] || undefined,
+      works: row[6].map(([type, plannedYear, completedDate, contractor]) => ({
+        type, plannedYear: plannedYear || undefined, completedDate: completedDate || undefined,
+        contractor: contractor || undefined,
+      })),
+    };
+  }
+
   async get(houseId: string, fiasId?: string): Promise<PublicHousingData> {
     const key = fiasId?.toLowerCase() || houseId;
     const cached = this.resultCache.get(key);
@@ -268,6 +311,12 @@ export class PublicHousingDataProvider {
       overhaul.status = 'unavailable';
       this.logger?.warn({ reason: 'region_not_resolved' }, 'Overhaul lookup unavailable');
       return { houseId, management, overhaul };
+    }
+    try {
+      const snapshot = await this.snapshot(region, key);
+      if (snapshot) return { houseId, management, overhaul: snapshot };
+    } catch (error) {
+      this.logger?.warn({ err: error, region, reason: 'snapshot_unavailable' }, 'Overhaul snapshot unavailable');
     }
     try {
       const reports = await this.getReports(region);

@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import type { AddressProvider } from './address-provider.js';
 import { PublicHousingDataProvider } from './public-housing-data.js';
 
@@ -50,6 +54,31 @@ const worksCsv = 'mkd_code;mun_obr_oktmo;service_type;service_date;fact_date_ser
 afterEach(() => vi.unstubAllGlobals());
 
 describe('public overhaul data', () => {
+  it('uses a dated local snapshot when the FRT site is blocked', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'domdelo-overhaul-test-'));
+    try {
+      await mkdir(join(directory, 'buckets'));
+      await writeFile(join(directory, 'manifest.json'), JSON.stringify({
+        'пермскийкрай': {
+          file: 'region.ndjson.gz', houseSourceUrl: FRT + '/opendata/export/101', snapshotDate: '2026-09-01',
+        },
+      }));
+      await writeFile(join(directory, 'buckets', 'aa.ndjson.gz'), gzipSync(JSON.stringify([
+        fiasId, '2026-09-01', 'Региональный оператор', 123.5, 9.36, '2015-01-01',
+        [['Ремонт крыши', '2028', null, 'Подрядчик']],
+      ]) + '\n'));
+      vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('FRT blocked'); }));
+
+      const data = await new PublicHousingDataProvider(addressProvider, undefined, directory).get('house-1', fiasId);
+      expect(data.overhaul.status).toBe('found');
+      expect(data.overhaul.snapshotDate).toBe('2026-09-01');
+      expect(data.overhaul.works).toHaveLength(1);
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('finds a house without a UK row using its verified region', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
@@ -60,7 +89,7 @@ describe('public overhaul data', () => {
       throw new Error('Unexpected URL ' + url);
     }));
 
-    const data = await new PublicHousingDataProvider(addressProvider).get('house-1', fiasId);
+    const data = await new PublicHousingDataProvider(addressProvider, undefined, null).get('house-1', fiasId);
     expect(data.management.status).toBe('missing');
     expect(data.overhaul.status).toBe('found');
     expect(data.overhaul.fundBalanceThousandRub).toBe(123.5);
@@ -80,7 +109,7 @@ describe('public overhaul data', () => {
       throw new Error('Unexpected URL ' + url);
     }));
 
-    const data = await new PublicHousingDataProvider(addressProvider).get('house-1', fiasId);
+    const data = await new PublicHousingDataProvider(addressProvider, undefined, null).get('house-1', fiasId);
     expect(data.overhaul.status).toBe('found');
     expect(data.overhaul.works).toHaveLength(1);
   });
@@ -88,7 +117,7 @@ describe('public overhaul data', () => {
   it('reports source denial as unavailable, not as an absent house', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('You are blocked', { status: 403 })));
     const warn = vi.fn();
-    const data = await new PublicHousingDataProvider(addressProvider, { warn }).get('house-1', fiasId);
+    const data = await new PublicHousingDataProvider(addressProvider, { warn }, null).get('house-1', fiasId);
     expect(data.overhaul.status).toBe('unavailable');
     expect(warn).toHaveBeenCalledWith(expect.objectContaining({
       reason: 'regional_export_failed', region: 'Пермский край',
@@ -105,10 +134,10 @@ describe('public overhaul data', () => {
       throw new Error('Unexpected URL ' + url);
     });
     vi.stubGlobal('fetch', fetchArchive);
-    expect((await new PublicHousingDataProvider(addressProvider).get('house-1', fiasId)).overhaul.status).toBe('missing');
+    expect((await new PublicHousingDataProvider(addressProvider, undefined, null).get('house-1', fiasId)).overhaul.status).toBe('missing');
 
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) =>
       new Response(String(input) === FRT + '/opendata' ? options : '<div>Нет наборов КР</div>')));
-    expect((await new PublicHousingDataProvider(addressProvider).get('house-2', fiasId)).overhaul.status).toBe('unavailable');
+    expect((await new PublicHousingDataProvider(addressProvider, undefined, null).get('house-2', fiasId)).overhaul.status).toBe('unavailable');
   });
 });

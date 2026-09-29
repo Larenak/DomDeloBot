@@ -1,0 +1,362 @@
+{
+  "пермскийкрай": {
+    "file": "2299744.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/235",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/405",
+    "snapshotDate": "2026-09-01"
+  },
+  "алтайскийкрай": {
+    "file": "2208163.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/256",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/426",
+    "snapshotDate": "2026-09-01"
+  },
+  "амурская": {
+    "file": "2215422.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/255",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/425",
+    "snapshotDate": "2026-09-01"
+  },
+  "архангельская": {
+    "file": "2216073.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/254",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/424",
+    "snapshotDate": "2026-09-01"
+  },
+  "астраханская": {
+    "file": "2220005.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/253",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/423",
+    "snapshotDate": "2026-09-01"
+  },
+  "белская": {
+    "file": "2220463.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/187",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/357",
+    "snapshotDate": "2026-09-01"
+  },
+  "брянская": {
+    "file": "2222089.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/186",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/356",
+    "snapshotDate": "2026-09-01"
+  },
+  "владимирская": {
+    "file": "2224825.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/185",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/355",
+    "snapshotDate": "2026-09-01"
+  },
+  "волгоградская": {
+    "file": "2227349.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/252",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/422",
+    "snapshotDate": "2026-09-01"
+  },
+  "вологодская": {
+    "file": "2228920.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/215",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/385",
+    "snapshotDate": "2026-09-01"
+  },
+  "воронежская": {
+    "file": "2236864.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/251",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/421",
+    "snapshotDate": "2026-09-01"
+  },
+  "москва": {
+    "file": "2280999.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/184",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/354",
+    "snapshotDate": "2026-09-01"
+  },
+  "санктпетербург": {
+    "file": "2276347.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/250",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/420",
+    "snapshotDate": "2026-09-01"
+  },
+  "севастополь": {
+    "file": "2399515.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/249",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/419",
+    "snapshotDate": "2026-09-01"
+  },
+  "еврейскаяавтономная": {
+    "file": "2361205.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/245",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/415",
+    "snapshotDate": "2026-09-01"
+  },
+  "забайкальскийкрай": {
+    "file": "2333436.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/205",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/375",
+    "snapshotDate": "2026-09-01"
+  },
+  "ивановская": {
+    "file": "2243734.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/183",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/353",
+    "snapshotDate": "2026-09-01"
+  },
+  "иркутская": {
+    "file": "2246043.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/204",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/374",
+    "snapshotDate": "2026-09-01"
+  },
+  "кабардинобалкарская": {
+    "file": "2347352.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/244",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/414",
+    "snapshotDate": "2026-09-01"
+  },
+  "калининградская": {
+    "file": "2247652.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/214",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/384",
+    "snapshotDate": "2026-09-01"
+  },
+  "калужская": {
+    "file": "2258331.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/182",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/352",
+    "snapshotDate": "2026-09-01"
+  },
+  "камчатскийкрай": {
+    "file": "2261569.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/243",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/413",
+    "snapshotDate": "2026-09-01"
+  },
+  "карачаевочеркесская": {
+    "file": "2352939.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/242",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/412",
+    "snapshotDate": "2026-09-01"
+  },
+  "кемеровскаякузбасс": {
+    "file": "2261688.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/203",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/373",
+    "snapshotDate": "2026-09-01"
+  },
+  "кировская": {
+    "file": "2262823.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/234",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/404",
+    "snapshotDate": "2026-09-01"
+  },
+  "костромская": {
+    "file": "2267309.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/241",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/411",
+    "snapshotDate": "2026-09-01"
+  },
+  "краснодарскийкрай": {
+    "file": "2209858.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/240",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/410",
+    "snapshotDate": "2026-09-01"
+  },
+  "красноярскийкрай": {
+    "file": "2211647.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/239",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/409",
+    "snapshotDate": "2026-09-01"
+  },
+  "курганская": {
+    "file": "2272233.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/191",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/361",
+    "snapshotDate": "2026-09-01"
+  },
+  "курская": {
+    "file": "2273507.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/181",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/351",
+    "snapshotDate": "2026-09-01"
+  },
+  "ленинградская": {
+    "file": "2276351.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/213",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/383",
+    "snapshotDate": "2026-09-01"
+  },
+  "липецкая": {
+    "file": "2279312.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/180",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/350",
+    "snapshotDate": "2026-09-01"
+  },
+  "магаданская": {
+    "file": "2280928.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/248",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/418",
+    "snapshotDate": "2026-09-01"
+  },
+  "московская": {
+    "file": "2281126.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/238",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/408",
+    "snapshotDate": "2026-09-01"
+  },
+  "мурманская": {
+    "file": "2287468.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/212",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/382",
+    "snapshotDate": "2026-09-01"
+  },
+  "ненецкий": {
+    "file": "2361342.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/211",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/381",
+    "snapshotDate": "2026-09-01"
+  },
+  "нижеская": {
+    "file": "2238753.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/237",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/407",
+    "snapshotDate": "2026-09-01"
+  },
+  "новская": {
+    "file": "2287629.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/210",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/380",
+    "snapshotDate": "2026-09-01"
+  },
+  "новосибирская": {
+    "file": "2290273.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/202",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/372",
+    "snapshotDate": "2026-09-01"
+  },
+  "омская": {
+    "file": "2291899.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/201",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/371",
+    "snapshotDate": "2026-09-01"
+  },
+  "оренбургская": {
+    "file": "2293481.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/236",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/406",
+    "snapshotDate": "2026-09-01"
+  },
+  "орловская": {
+    "file": "2295251.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/179",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/349",
+    "snapshotDate": "2026-09-01"
+  },
+  "пензенская": {
+    "file": "2298217.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/233",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/403",
+    "snapshotDate": "2026-09-01"
+  },
+  "приморскийкрай": {
+    "file": "2213474.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/228",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/398",
+    "snapshotDate": "2026-09-01"
+  },
+  "псковская": {
+    "file": "2303372.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/227",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/397",
+    "snapshotDate": "2026-09-01"
+  },
+  "адыгея": {
+    "file": "2340164.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/175",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/345",
+    "snapshotDate": "2026-09-01"
+  },
+  "алтай": {
+    "file": "2347543.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/226",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/396",
+    "snapshotDate": "2026-09-01"
+  },
+  "башкортостан": {
+    "file": "2340399.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/232",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/402",
+    "snapshotDate": "2026-09-01"
+  },
+  "бурятия": {
+    "file": "2345009.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/200",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/370",
+    "snapshotDate": "2026-09-01"
+  },
+  "дагестан": {
+    "file": "2345675.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/209",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/379",
+    "snapshotDate": "2026-09-01"
+  },
+  "ингушетия": {
+    "file": "2247643.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/208",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/378",
+    "snapshotDate": "2026-09-01"
+  },
+  "калмыкия": {
+    "file": "2347799.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/174",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/344",
+    "snapshotDate": "2026-09-01"
+  },
+  "карелия": {
+    "file": "2348078.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/225",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/395",
+    "snapshotDate": "2026-09-01"
+  },
+  "коми": {
+    "file": "2348894.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/224",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/394",
+    "snapshotDate": "2026-09-01"
+  },
+  "крым": {
+    "file": "2399489.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/173",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/343",
+    "snapshotDate": "2026-09-01"
+  },
+  "марийэл": {
+    "file": "2349746.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/223",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/393",
+    "snapshotDate": "2026-09-01"
+  },
+  "мордовия": {
+    "file": "2351376.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/222",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/392",
+    "snapshotDate": "2026-09-01"
+  },
+  "сахаякутия": {
+    "file": "2360536.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/221",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/391",
+    "snapshotDate": "2026-09-01"
+  },
+  "севернаяосетияалания": {
+    "file": "2352709.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/207",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/377",
+    "snapshotDate": "2026-09-01"
+  },
+  "татарстан": {
+    "file": "2353101.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/220",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/390",
+    "snapshotDate": "2026-09-01"
+  }
+}

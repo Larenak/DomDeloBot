@@ -13,4 +13,5 @@ tmp/
 playwright-report/
 test-results/
 *.log
+apps/server/data/overhaul/*.ndjson.gz
 .DS_Store
