@@ -273,6 +273,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       houses: items.map((house) => ({
         id: house.id,
         address: house.address,
+        ...(house.fiasId ? { fiasId: house.fiasId } : {}),
         isActive: house.id === actor.houseId,
         isDemo: house.isDemo,
       })),

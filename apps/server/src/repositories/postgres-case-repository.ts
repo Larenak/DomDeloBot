@@ -167,6 +167,7 @@ export class PostgresCaseRepository implements CaseRepository {
       .select({
         id: houses.id,
         address: houses.address,
+        fiasId: houses.fiasId,
         isDemo: houses.isDemo,
         lastUsedAt: houseMembers.lastUsedAt,
       })
@@ -182,6 +183,7 @@ export class PostgresCaseRepository implements CaseRepository {
       houses: rows.map((row) => ({
         id: row.id,
         address: row.address,
+        ...(row.fiasId ? { fiasId: row.fiasId } : {}),
         isActive: row.id === activeId,
         isDemo: row.isDemo,
       })),

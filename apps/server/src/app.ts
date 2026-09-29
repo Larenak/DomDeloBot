@@ -13,6 +13,7 @@ import { registerCaseRoutes } from './modules/cases/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerHouseRoutes } from './modules/houses/routes.js';
 import { registerPollRoutes } from './modules/polls/routes.js';
+import { registerServiceRoutes } from './modules/services/routes.js';
 import { startOutboxWorker } from './modules/outbox/worker.js';
 import { registerWebhookRoutes } from './modules/webhook/routes.js';
 import {
@@ -28,6 +29,7 @@ import { InMemoryPollRepository } from './repositories/in-memory-poll-repository
 import { PostgresPollRepository } from './repositories/postgres-poll-repository.js';
 import type { PollRepository } from './repositories/poll-repository.js';
 import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
+import { PublicHousingDataProvider } from './services/public-housing-data.js';
 import { InappropriateCaseTextError } from './services/case-text-moderation.js';
 import {
   InMemoryObjectStorage,
@@ -45,6 +47,7 @@ type BuildAppOptions = {
   objectStorage?: ObjectStorage;
   notifier?: BotNotifier;
   addressProvider?: AddressProvider;
+  publicHousingDataProvider?: Pick<PublicHousingDataProvider, 'get'>;
 };
 
 export async function buildApp(options: BuildAppOptions) {
@@ -114,6 +117,7 @@ export async function buildApp(options: BuildAppOptions) {
         { name: 'houses' },
         { name: 'cases' },
         { name: 'polls' },
+        { name: 'services' },
         { name: 'case-workflow' },
         { name: 'attachments' },
         { name: 'MAX webhook' },
@@ -131,9 +135,11 @@ export async function buildApp(options: BuildAppOptions) {
 
   await registerAuth(app, database?.db);
   await registerHealthRoutes(app);
-  await registerHouseRoutes(app, options.addressProvider || (options.config.demoMode && !options.config.dadataApiKey ? new DemoAddressProvider() : new DadataAddressProvider(options.config.dadataApiKey)));
+  const addressProvider = options.addressProvider || (options.config.demoMode && !options.config.dadataApiKey ? new DemoAddressProvider() : new DadataAddressProvider(options.config.dadataApiKey));
+  await registerHouseRoutes(app, addressProvider);
   await registerCaseRoutes(app);
   await registerPollRoutes(app);
+  await registerServiceRoutes(app, options.publicHousingDataProvider || new PublicHousingDataProvider(addressProvider));
   await registerWebhookRoutes(app, notifier);
 
   if (objectStorage.get) {

@@ -8,6 +8,7 @@ import type {
   CreateCaseInput,
   DuplicateSearchInput,
   HouseContextDto,
+  PublicHousingDataDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 
@@ -161,6 +162,9 @@ export const houseApi = {
   select: (houseId: string) =>
     api<HouseContextDto>(`/api/me/houses/${houseId}/select`, { method: 'POST' }),
   joinDemo: () => api<HouseContextDto>('/api/me/houses/demo', { method: 'POST' }),
+};
+export const serviceApi = {
+  house: () => api<PublicHousingDataDto>('/api/services/house'),
 };
 export const pollApi = {
   list: () => api<PollDto[]>('/api/polls'),

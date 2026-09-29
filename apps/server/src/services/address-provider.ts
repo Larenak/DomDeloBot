@@ -6,6 +6,7 @@ export type VerifiedHouse = {
   city: string;
   street: string;
   building: string;
+  region?: string;
 };
 
 export interface AddressProvider {
@@ -24,6 +25,7 @@ type DadataAddress = {
   data?: {
     country_iso_code?: string | null;
     city?: string | null;
+    region_with_type?: string | null;
     settlement?: string | null;
     area?: string | null;
     street?: string | null;
@@ -107,6 +109,7 @@ export class DadataAddressProvider implements AddressProvider {
       fiasId: fiasId.toLowerCase(),
       address: found.value,
       city,
+      ...(data.region_with_type ? { region: data.region_with_type } : {}),
       street: data.street || '',
       building: [data.house, data.block ? `${data.block_type || 'к'} ${data.block}` : ''].filter(Boolean).join(' '),
     };

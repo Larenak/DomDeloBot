@@ -347,3 +347,16 @@ label input, label select, label textarea { display: block; margin-top: 7px; fon
 
 .service-facts { padding-left: 20px; color: #47566c; font-size: 13px; line-height: 1.5; }
 .service-facts li + li { margin-top: 7px; }
+.services-house-label { margin: 26px 0 14px; color: var(--muted); font-size: 13px; }
+.services-house-label strong { color: var(--ink); }
+.service-company { margin: 18px 0 10px; color: var(--ink); font-size: 21px; line-height: 1.3; font-weight: 750; }
+.service-source-note { margin: 16px 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.service-source-link { display: block; width: fit-content; margin-top: 12px; color: var(--blue); font-size: 12px; font-weight: 650; }
+.service-subtitle { margin: 20px 0 10px; font-size: 15px; }
+.service-work-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.service-work-list li { display: grid; gap: 3px; padding: 10px 12px; border-radius: 10px; background: #f5f7fa; font-size: 12px; }
+.service-work-list li strong { color: var(--ink); font-size: 13px; }
+.service-work-list li span, .service-work-list li small { color: var(--muted); }
+.service-more { margin-top: 10px; }
+.service-more summary { color: var(--blue); font-size: 12px; font-weight: 700; cursor: pointer; }
+.service-more .service-work-list { margin-top: 10px; }

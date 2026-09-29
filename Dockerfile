@@ -27,6 +27,7 @@ COPY --from=build --chown=node:node /workspace/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/server/package.json ./apps/server/package.json
 COPY --from=build --chown=node:node /workspace/apps/server/node_modules ./apps/server/node_modules
 COPY --from=build --chown=node:node /workspace/apps/server/dist ./apps/server/dist
+COPY --from=build --chown=node:node /workspace/apps/server/data ./apps/server/data
 COPY --from=build --chown=node:node /workspace/packages ./packages
 COPY --from=build --chown=node:node /workspace/db/migrations ./db/migrations
 COPY --from=build --chown=node:node /workspace/infra/certs ./infra/certs

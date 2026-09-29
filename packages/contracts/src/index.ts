@@ -36,6 +36,7 @@ export type CaseCategory = Static<typeof CaseCategorySchema>;
 export const HouseSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   address: Type.String(),
+  fiasId: Type.Optional(Type.String({ format: 'uuid' })),
   isActive: Type.Boolean(),
   isDemo: Type.Boolean(),
 });
@@ -63,6 +64,35 @@ export type HouseContextDto = Static<typeof HouseContextSchema>;
 export type AddHouseInput = Static<typeof AddHouseSchema>;
 export type AddressSuggestionDto = Static<typeof AddressSuggestionSchema>;
 
+export const PublicHousingDataSchema = Type.Object({
+  houseId: Type.String({ format: 'uuid' }),
+  management: Type.Object({
+    status: Type.Union([Type.Literal('found'), Type.Literal('missing'), Type.Literal('unavailable')]),
+    name: Type.Optional(Type.String()),
+    managementType: Type.Optional(Type.String()),
+    organizationUrl: Type.Optional(Type.String()),
+    sourceUrl: Type.String(),
+    snapshotDate: Type.String(),
+  }),
+  overhaul: Type.Object({
+    status: Type.Union([Type.Literal('found'), Type.Literal('missing'), Type.Literal('unavailable')]),
+    sourceUrl: Type.String(),
+    worksSourceUrl: Type.Optional(Type.String()),
+    snapshotDate: Type.Optional(Type.String()),
+    updatedAt: Type.Optional(Type.String()),
+    fundingMethod: Type.Optional(Type.String()),
+    fundBalanceThousandRub: Type.Optional(Type.Number({ minimum: 0 })),
+    contributionRubPerSqM: Type.Optional(Type.Number({ minimum: 0 })),
+    includedAt: Type.Optional(Type.String()),
+    works: Type.Array(Type.Object({
+      type: Type.String(),
+      plannedYear: Type.Optional(Type.String()),
+      completedDate: Type.Optional(Type.String()),
+      contractor: Type.Optional(Type.String()),
+    })),
+  }),
+});
+export type PublicHousingDataDto = Static<typeof PublicHousingDataSchema>;
 export const CaseHistoryItemSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   fromStatus: Type.Optional(CaseStatusSchema),
