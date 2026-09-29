@@ -358,5 +358,11 @@
     "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/220",
     "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/390",
     "snapshotDate": "2026-09-01"
+  },
+  "свердловская": {
+    "file": "2317157.ndjson.gz",
+    "houseSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/190",
+    "worksSourceUrl": "https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata/export/360",
+    "snapshotDate": "2026-09-01"
   }
 }

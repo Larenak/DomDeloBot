@@ -54,6 +54,16 @@ const worksCsv = 'mkd_code;mun_obr_oktmo;service_type;service_date;fact_date_ser
 afterEach(() => vi.unstubAllGlobals());
 
 describe('public overhaul data', () => {
+  it('finds a newly added Sverdlovsk house in the bundled snapshot', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('FRT blocked'); }));
+    const id = '7de0f8e1-73cd-441f-b308-237d62b9b10b';
+    const data = await new PublicHousingDataProvider().get('ekb-lenina-29', id);
+    expect(data.management.status).toBe('found');
+    expect(data.overhaul.status).toBe('found');
+    expect(data.overhaul.works.length).toBeGreaterThan(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('uses a dated local snapshot when the FRT site is blocked', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'domdelo-overhaul-test-'));
     try {
