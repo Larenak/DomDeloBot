@@ -9,6 +9,7 @@ import type { ObjectStorage } from './services/object-storage.js';
 export type AuthenticatedActor = WorkflowActor & {
   displayName: string;
   isDemoHouse?: boolean;
+  maxUserId?: string;
 };
 
 declare module 'fastify' {

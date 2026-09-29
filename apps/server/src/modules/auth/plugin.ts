@@ -1,13 +1,16 @@
 import type { UserRole } from '@domdelo/domain';
 import type { FastifyInstance } from 'fastify';
 
+import type { Database } from '../../db/client.js';
+
 import { demoActors } from '../../repositories/in-memory-case-repository.js';
 import { createSessionToken, verifySessionToken } from './session.js';
 import { validateMaxInitData } from './max-init-data.js';
+import { redeemHouseInvite } from './house-invites.js';
 
 const publicDemoRoles = new Set<UserRole>(['resident', 'owner', 'tenant', 'chair', 'dispatcher', 'executor', 'authority']);
 
-export async function registerAuth(app: FastifyInstance): Promise<void> {
+export async function registerAuth(app: FastifyInstance, db?: Database): Promise<void> {
   app.get('/api/public-config', async () => ({
     demoMode: app.config.demoMode,
     ...(app.config.hackathonHouseId ? { demoHouseAvailable: true } : {}),
@@ -68,6 +71,41 @@ export async function registerAuth(app: FastifyInstance): Promise<void> {
         token: createSessionToken(actor, app.config.sessionSecret),
         actor,
       };
+    },
+  );
+
+  app.get('/api/auth/me', { preHandler: app.authenticate }, async (request) => ({
+    actor: request.actor,
+  }));
+
+  app.post(
+    '/api/auth/house-invite',
+    {
+      preHandler: app.authenticate,
+      schema: {
+        tags: ['auth'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['code'],
+          additionalProperties: false,
+          properties: { code: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const bearer = request.headers.authorization;
+      const session = bearer?.startsWith('Bearer ')
+        ? verifySessionToken(bearer.slice(7), app.config.sessionSecret) : null;
+      if (!session || session.id !== request.actor?.id || request.headers['x-demo-user']) {
+        return reply.code(401).send({ error: 'unauthorized', message: 'Откройте приложение через MAX' });
+      }
+      if (!db) {
+        return reply.code(503).send({ error: 'registration_unavailable', message: 'Регистрация по приглашению недоступна' });
+      }
+      const { code } = request.body as { code: string };
+      await redeemHouseInvite(db, request.actor!.id, code);
+      return { actor: await app.caseRepository.refreshActor(request.actor!) };
     },
   );
 

@@ -76,6 +76,41 @@ describe('ДомДело API', () => {
     expect(cases.statusCode).toBe(401);
   });
 
+  it('requires a signed session for personal invitations', async () => {
+    const app = await testApp();
+    const anonymous = await app.inject({
+      method: 'POST', url: '/api/auth/house-invite',
+      payload: { code: 'A'.repeat(43) },
+    });
+    expect(anonymous.statusCode).toBe(401);
+
+    const demo = await app.inject({
+      method: 'POST', url: '/api/auth/house-invite',
+      headers: { 'x-demo-user': 'resident-1' },
+      payload: { code: 'A'.repeat(43) },
+    });
+    expect(demo.statusCode).toBe(401);
+    expect(demo.json().error).toBe('unauthorized');
+
+    const token = createSessionToken({
+      id: 'abababab-abab-4bab-8bab-abababababab',
+      role: 'resident',
+      displayName: 'MAX user',
+    }, config.sessionSecret);
+    const signed = await app.inject({
+      method: 'POST', url: '/api/auth/house-invite',
+      headers: { authorization: 'Bearer ' + token },
+      payload: { code: 'A'.repeat(43) },
+    });
+    expect(signed.statusCode).toBe(503);
+
+    const identity = await app.inject({
+      method: 'GET', url: '/api/auth/me',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(identity.json().actor.role).toBe('resident');
+  });
+
   it('reports liveness and readiness', async () => {
     const app = await testApp();
     const live = await app.inject({ method: 'GET', url: '/health/live' });
