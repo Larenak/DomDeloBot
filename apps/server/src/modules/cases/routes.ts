@@ -10,6 +10,7 @@ import {
 import type { CaseStatus } from '@domdelo/domain';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
+import { assertAcceptableCaseText } from '../../services/case-text-moderation.js';
 
 export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
   const secured = { preHandler: app.authenticate };
@@ -71,10 +72,14 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
         tags: ['cases'],
         security: [{ bearerAuth: [] }, { demoUser: [] }],
         body: DuplicateSearchSchema,
-        response: { 200: { type: 'array', items: CaseSchema } },
+        response: { 200: { type: 'array', items: CaseSchema }, 422: ErrorSchema },
       },
     },
-    async (request) => app.caseRepository.findDuplicates(request.actor!, request.body as never),
+    async (request) => {
+      const input = request.body as { description: string; place: string };
+      assertAcceptableCaseText({ 'Описание': input.description, 'Место': input.place });
+      return app.caseRepository.findDuplicates(request.actor!, request.body as never);
+    },
   );
 
   app.post(
@@ -92,7 +97,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
           },
         },
         body: CreateCaseSchema,
-        response: { 201: CaseSchema, 400: ErrorSchema, 403: ErrorSchema },
+        response: { 201: CaseSchema, 400: ErrorSchema, 403: ErrorSchema, 422: ErrorSchema },
       },
     },
     async (request, reply) => {
@@ -182,7 +187,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
           properties: { caseId: { type: 'string', format: 'uuid' } },
         },
         body: TransitionCaseSchema,
-        response: { 200: CaseSchema, 409: ErrorSchema },
+        response: { 200: CaseSchema, 409: ErrorSchema, 422: ErrorSchema },
       },
     },
     async (request) => {
@@ -209,7 +214,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
           required: ['kind'],
           properties: { kind: { type: 'string', enum: ['problem', 'result'] } },
         },
-        response: { 200: CaseSchema, 400: ErrorSchema, 403: ErrorSchema, 413: ErrorSchema, 415: ErrorSchema },
+        response: { 200: CaseSchema, 400: ErrorSchema, 403: ErrorSchema, 413: ErrorSchema, 415: ErrorSchema, 422: ErrorSchema },
       },
     },
     async (request, reply) => {
@@ -230,6 +235,7 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
         });
       }
       const body = await file.toBuffer();
+      assertAcceptableCaseText({ 'Имя файла': file.filename });
       const extension = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
       const key = `cases/${caseId}/${kind}/${randomUUID()}.${extension}`;
       const stored = await app.objectStorage.put(key, body, file.mimetype);

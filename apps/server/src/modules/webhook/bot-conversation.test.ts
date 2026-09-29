@@ -320,3 +320,32 @@ describe('MAX bot conversation', () => {
     expect(caseResponse.json().attachments).toHaveLength(1);
   });
 });
+
+describe('MAX bot text moderation', () => {
+  it('asks for a clean description before requesting a photo', async () => {
+    const notifier = new RecordingNotifier();
+    const app = await buildApp({ config, notifier });
+    openedApps.push(app);
+    await addMaxHouse(app, 98n, 'Мария');
+    const sender = { user_id: 98, first_name: 'Мария' };
+    const webhook = (mid: string, text: string) => app.inject({
+      method: 'POST', url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: {
+        update_type: 'message_created',
+        message: { body: { mid, text }, sender, recipient: { chat_id: 777 } },
+      },
+    });
+
+    await webhook('moderation-start', 'Создать дело');
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    await webhook('moderation-bad', 'В подъезде х.у.й на стене, уберите надпись.');
+    await expect.poll(() => notifier.messages.length).toBe(2);
+    expect(notifier.messages[1]?.text).toContain('Переформулируйте');
+    expect(notifier.messages[1]?.text).not.toContain('фотографию');
+
+    await webhook('moderation-clean', 'На стене подъезда появилась нецензурная надпись, прошу убрать её.');
+    await expect.poll(() => notifier.messages.length).toBe(3);
+    expect(notifier.messages[2]?.text).toContain('Теперь прикрепите одну фотографию');
+  });
+});

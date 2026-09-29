@@ -28,6 +28,7 @@ import { InMemoryPollRepository } from './repositories/in-memory-poll-repository
 import { PostgresPollRepository } from './repositories/postgres-poll-repository.js';
 import type { PollRepository } from './repositories/poll-repository.js';
 import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
+import { InappropriateCaseTextError } from './services/case-text-moderation.js';
 import {
   InMemoryObjectStorage,
   PostgresObjectStorage,
@@ -166,6 +167,9 @@ export async function buildApp(options: BuildAppOptions) {
   app.setErrorHandler((error, request, reply) => {
     const typedError = error as Error & { validation?: unknown };
     const requestId = request.id;
+    if (error instanceof InappropriateCaseTextError) {
+      return reply.code(422).send({ error: 'inappropriate_text', message: error.message, requestId });
+    }
     if (error instanceof NotFoundError) {
       return reply.code(404).send({ error: 'not_found', message: error.message, requestId });
     }

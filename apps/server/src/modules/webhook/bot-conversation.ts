@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedActor } from '../../types.js';
 import type { BotButton, BotNotifier } from '../../services/max-notifier.js';
+import { assertAcceptableCaseText, InappropriateCaseTextError } from '../../services/case-text-moderation.js';
 
 type MaxUser = {
   user_id: number;
@@ -215,6 +216,13 @@ export class BotConversationService {
         return;
       }
       const input = parseCaseDescription(update.message?.body?.text || context.text);
+      try {
+        assertAcceptableCaseText({ 'Описание': input.description });
+      } catch (error) {
+        if (!(error instanceof InappropriateCaseTextError)) throw error;
+        await this.send(context, 'В описании есть нецензурные выражения. Переформулируйте его и отправьте ещё раз.');
+        return;
+      }
       this.drafts.set(key, { state: 'awaiting_photo', input, idempotencyKey: draft.idempotencyKey });
       if (context.photo && context.messageId) return this.handle(update);
       await this.send(

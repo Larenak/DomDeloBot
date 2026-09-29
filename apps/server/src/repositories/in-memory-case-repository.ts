@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuthenticatedActor } from '../types.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
 import { makeHouseReport } from '../modules/cases/report.js';
+import { assertAcceptableCaseText } from '../services/case-text-moderation.js';
 import {
   AddressOnboardingRequiredError,
   ConflictError,
@@ -359,6 +360,7 @@ export class InMemoryCaseRepository implements CaseRepository {
   ): Promise<CaseDto[]> {
     if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const houseId = activeHouseId(actor);
+    assertAcceptableCaseText({ 'Описание': input.description, 'Место': input.place });
     return this.items
       .filter(
         (item) =>
@@ -392,6 +394,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       return this.confirmCase(actor, input.duplicateCaseId);
     }
 
+    assertAcceptableCaseText({ 'Заголовок': input.title, 'Описание': input.description, 'Место': input.place, 'Подъезд': input.entrance });
     const idempotencyScope = `${actor.id}:${idempotencyKey}`;
     const existingId = this.idempotencyKeys.get(idempotencyScope);
     if (existingId) return this.getCase(actor, existingId);
@@ -476,6 +479,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       throw new ConflictError('Карточка уже изменилась. Обновите данные и повторите действие.');
     }
     assertTransitionAllowed(item.status, input.status, actor.role);
+    assertAcceptableCaseText({ 'Исполнитель': input.assignee, 'Комментарий': input.comment });
     if (input.status === 'assigned' && !input.assignee?.trim()) {
       throw new ConflictError('Укажите исполнителя при назначении');
     }

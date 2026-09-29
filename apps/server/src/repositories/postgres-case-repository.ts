@@ -30,6 +30,7 @@ import {
 import type { AuthenticatedActor } from '../types.js';
 import { makeHouseReport } from '../modules/cases/report.js';
 import type { ObjectStorage } from '../services/object-storage.js';
+import { assertAcceptableCaseText } from '../services/case-text-moderation.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
 import {
   AddressOnboardingRequiredError,
@@ -307,6 +308,7 @@ export class PostgresCaseRepository implements CaseRepository {
   ): Promise<CaseDto[]> {
     const houseId = activeHouseId(actor);
     if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
+    assertAcceptableCaseText({ 'Описание': input.description, 'Место': input.place });
     const inputText = normalized(`${input.place} ${input.description}`);
     const similarity = sql<number>`similarity(${cases.normalizedText}, ${inputText})`;
     const rows = await this.db
@@ -333,6 +335,7 @@ export class PostgresCaseRepository implements CaseRepository {
     idempotencyKey: string,
   ): Promise<CaseDto> {
     ensureResident(actor);
+    assertAcceptableCaseText({ 'Заголовок': input.title, 'Описание': input.description, 'Место': input.place, 'Подъезд': input.entrance });
     const houseId = activeHouseId(actor);
     if (input.duplicateCaseId) return this.confirmCase(actor, input.duplicateCaseId);
     const [house] = await this.db.select({ isDemo: houses.isDemo }).from(houses)
@@ -444,6 +447,7 @@ export class PostgresCaseRepository implements CaseRepository {
     const current = await this.ensureVisible(actor, caseId);
     const houseId = activeHouseId(actor);
     assertTransitionAllowed(current.status, input.status, actor.role);
+    assertAcceptableCaseText({ 'Исполнитель': input.assignee, 'Комментарий': input.comment });
     if (input.status === 'assigned' && !input.assignee?.trim()) {
       throw new ConflictError('Укажите исполнителя при назначении');
     }

@@ -407,3 +407,62 @@ describe('ДомДело API', () => {
     expect(second.json()).toEqual({ ok: true, duplicate: true });
   });
 });
+
+describe('automatic text moderation', () => {
+  it('rejects inappropriate case text before it appears to neighbors', async () => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    const headers = { 'x-demo-user': 'resident-1', 'idempotency-key': 'moderation-create-case' };
+    const before = await app.inject({ method: 'GET', url: '/api/cases', headers });
+
+    const rejected = await app.inject({
+      method: 'POST', url: '/api/cases', headers,
+      payload: {
+        title: 'Сломана дверь в подъезде',
+        description: 'На двери написано слово х.у.й, которое нужно убрать.',
+        category: 'entrance', place: 'Входная дверь',
+      },
+    });
+    expect(rejected.statusCode).toBe(422);
+    expect(rejected.json()).toMatchObject({ error: 'inappropriate_text' });
+    const after = await app.inject({ method: 'GET', url: '/api/cases', headers });
+    expect(after.json()).toHaveLength(before.json().length);
+
+    const duplicateSearch = await app.inject({
+      method: 'POST', url: '/api/cases/deduplication', headers,
+      payload: { description: 'В подъезде х у й на стене', category: 'entrance', place: 'Подъезд' },
+    });
+    expect(duplicateSearch.statusCode).toBe(422);
+  });
+
+  it('rejects inappropriate status comments without changing the case', async () => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    await addDemoHouse(app, 'dispatcher-1');
+    const created = await app.inject({
+      method: 'POST', url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1', 'idempotency-key': 'moderation-status-case' },
+      payload: {
+        title: 'Не закрывается входная дверь',
+        description: 'В подъезде не закрывается входная дверь.',
+        category: 'entrance', place: 'Входная дверь',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    const rejected = await app.inject({
+      method: 'PATCH', url: `/api/cases/${id}/status`,
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: {
+        status: 'assigned', expectedVersion: created.json().version,
+        assignee: 'Мастер', comment: 'Сука, опять сломали дверь',
+      },
+    });
+    expect(rejected.statusCode).toBe(422);
+    const unchanged = await app.inject({
+      method: 'GET', url: `/api/cases/${id}`, headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(unchanged.json()).toMatchObject({ status: 'registered', version: created.json().version });
+  });
+});
