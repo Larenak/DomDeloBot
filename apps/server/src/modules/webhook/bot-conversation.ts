@@ -153,13 +153,16 @@ export class BotConversationService {
 
     if (update.update_type === 'bot_started' || context.text === '/start') {
       const launchButton = this.miniAppButton('Открыть ДомДело');
+      const demoButtons: BotButton[][] = this.demoAvailable()
+        ? [[{ type: 'message', text: 'Демо-режим' }]] : [];
       const actor = await this.resolveActor(context);
       const houseContext = await this.app.caseRepository.getHouseContext(actor);
       if (houseContext.onboardingRequired) {
         await this.send(
           context,
-          '**Сначала добавьте адрес дома.**\n\nДомДело разделяет обращения по адресам. Откройте мини-приложение и добавьте хотя бы один дом — после этого создание дел станет доступно.',
-          launchButton ? [[launchButton]] : undefined,
+          '**Сначала добавьте адрес дома.**\n\nДомДело разделяет обращения по адресам. Откройте мини-приложение и добавьте хотя бы один дом — после этого создание дел станет доступно.' +
+            (this.demoAvailable() ? '\n\nДля показа возможностей можно выбрать «Демо-режим» и попробовать любую роль в вымышленном доме.' : ''),
+          [...(launchButton ? [[launchButton]] : []), ...demoButtons],
         );
         return;
       }
@@ -170,11 +173,33 @@ export class BotConversationService {
       const activeHouse = houseContext.houses.find((house) => house.isActive);
       const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
       if (launchButton) buttons.push([launchButton]);
+      buttons.push(...demoButtons);
       await this.send(
         context,
         `**ДомДело** превращает сообщение о проблеме в доме в прозрачное коллективное дело.\n\n${activeHouse ? `Текущий дом: **${escapeMarkdown(activeHouse.address)}**.\n\n` : ''}Создайте дело здесь или откройте мини-приложение.`,
         buttons,
       );
+      return;
+    }
+
+    if (context.text === '/demo' || context.text === 'демо' || context.text === 'демо-режим') {
+      if (!this.demoAvailable()) {
+        await this.send(context, 'Демонстрационный дом пока не настроен.');
+        return;
+      }
+      this.drafts.delete(key);
+      const roles: Array<[string, string]> = [
+        ['resident', 'Житель'], ['owner', 'Собственник'], ['tenant', 'Арендатор'],
+        ['chair', 'Председатель'], ['dispatcher', 'Диспетчер УК'],
+        ['executor', 'Исполнитель'], ['authority', 'Муниципалитет'],
+      ];
+      const buttons = roles.flatMap(([role, label]) => {
+        const button = this.miniAppButton(`Демо: ${label}`, `/demo?role=${role}`, `demo_${role}`);
+        return button ? [[button]] : [];
+      });
+      await this.send(context,
+        '**Демонстрационный дом.** Выберите роль: мини-приложение покажет её сценарий. Роль не действует в настоящих домах.',
+        buttons.length ? buttons : undefined);
       return;
     }
 
@@ -281,11 +306,12 @@ export class BotConversationService {
   }
 
   private async resolveActor(context: UpdateContext): Promise<AuthenticatedActor> {
-    return this.app.caseRepository.resolveMaxUser({
+    const actor = await this.app.caseRepository.resolveMaxUser({
       maxUserId: BigInt(context.userId),
       displayName: displayName(context.user),
       ...(context.chatId ? { maxChatId: BigInt(context.chatId) } : {}),
     });
+    return this.app.caseRepository.refreshActor(actor);
   }
 
   private async finish(
@@ -300,7 +326,8 @@ export class BotConversationService {
         { ...pending.input, ...(duplicateCaseId ? { duplicateCaseId } : {}) },
         `max:${pending.idempotencyKey}`,
       );
-      await this.attachPhoto(actor, item.id, pending.photo);
+      const photoAllowed = this.app.config.demoMode || !actor.isDemoHouse;
+      if (photoAllowed) await this.attachPhoto(actor, item.id, pending.photo);
       this.drafts.delete(this.key(context));
       if (context.callbackId) await this.notifier.answerCallback(context.callbackId, 'Готово');
       const joined = Boolean(duplicateCaseId);
@@ -311,9 +338,10 @@ export class BotConversationService {
       );
       await this.send(
         context,
-        joined
+        (joined
           ? `Вы присоединились к делу **№${item.number}**. Теперь проблему подтвердили ${item.confirmationsCount} жильцов.`
-          : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`,
+          : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`) +
+          (photoAllowed ? '' : '\n\nФотография не сохранена: демонстрационный дом открыт для других участников.'),
         caseButton ? [[caseButton]] : undefined,
       );
     } catch (error) {
@@ -354,6 +382,11 @@ export class BotConversationService {
 
   private key(context: UpdateContext): string {
     return `${context.chatId || 'private'}:${context.userId}`;
+  }
+
+  private demoAvailable(): boolean {
+    return Boolean(this.app.config.hackathonHouseId ||
+      (this.app.config.demoMode && this.app.config.storageMode === 'memory'));
   }
 
   private miniAppUrl(path = ''): string | undefined {

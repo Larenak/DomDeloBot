@@ -8,6 +8,7 @@ export function DemoHouseButton() {
     mutationFn: houseApi.joinDemo,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['house-context'] });
+      window.location.assign('/demo');
     },
   });
   return <div className="demo-house-entry">

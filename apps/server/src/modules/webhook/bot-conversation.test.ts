@@ -91,6 +91,62 @@ describe('MAX bot conversation', () => {
       text: 'Открыть ДомДело',
       web_app: 'domdelo_bot',
     });
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'message', text: 'Демо-режим',
+    });
+  });
+
+  it('offers role-specific mini-app entry points for the demo house', async () => {
+    const notifier = new RecordingNotifier();
+    const app = await buildApp({ config, notifier });
+    openedApps.push(app);
+    await app.inject({
+      method: 'POST', url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: {
+        update_type: 'message_created', timestamp: 42,
+        message: {
+          body: { mid: 'demo-menu', text: 'Демо-режим' },
+          sender: { user_id: 901, first_name: 'Гость' },
+          recipient: { chat_id: 901 },
+        },
+      },
+    });
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'open_app', text: 'Демо: Диспетчер УК', web_app: 'domdelo_bot', payload: 'demo_dispatcher',
+    });
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toHaveLength(7);
+  });
+
+  it('does not store bot photos in a shared published demo house', async () => {
+    const notifier = new RecordingNotifier();
+    const publishedConfig = loadConfig({
+      NODE_ENV: 'production', STORAGE_MODE: 'memory', DEMO_MODE: 'false',
+      HACKATHON_HOUSE_ID: '11111111-1111-4111-8111-111111111111',
+      MAX_WEBHOOK_SECRET: 'test-webhook-secret',
+      SESSION_SECRET: 'test-session-secret-with-enough-entropy',
+      PUBLIC_BASE_URL: 'https://domdelo.test',
+    });
+    const app = await buildApp({ config: publishedConfig, notifier });
+    openedApps.push(app);
+    const actor = await app.caseRepository.resolveMaxUser({ maxUserId: 902n, displayName: 'Участник демо' });
+    await app.caseRepository.joinDemoHouse(actor, '11111111-1111-4111-8111-111111111111');
+    const webhook = (mid: string, text: string, attachments?: unknown[]) => app.inject({
+      method: 'POST', url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: { update_type: 'message_created', timestamp: Date.now(),
+        message: { body: { mid, text, attachments }, sender: { user_id: 902, first_name: 'Гость' }, recipient: { chat_id: 902 } } },
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('Photo download should not run'); }));
+    await webhook('demo-create', 'Создать дело');
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    await webhook('demo-description', 'В третьем подъезде сломана ручка двери и она не закрывается.');
+    await expect.poll(() => notifier.messages.length).toBe(2);
+    await webhook('demo-photo', '', [{ type: 'image', payload: { url: 'https://example.test/photo.jpg' } }]);
+    await expect.poll(() => notifier.messages.length).toBe(3);
+    expect(notifier.messages[2]?.text).toContain('Фотография не сохранена');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('starts a guided case flow for a bot_started update', async () => {
@@ -179,6 +235,7 @@ describe('MAX bot conversation', () => {
     await expect.poll(() => notifier.messages.length).toBe(1);
     expect(notifier.messages[0]?.options?.buttons?.flat()).toEqual([
       { type: 'message', text: 'Создать дело' },
+      { type: 'message', text: 'Демо-режим' },
     ]);
   });
 

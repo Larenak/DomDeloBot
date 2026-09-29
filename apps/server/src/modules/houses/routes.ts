@@ -7,6 +7,7 @@ import {
 } from '@domdelo/contracts';
 import type { FastifyInstance } from 'fastify';
 import type { AddressProvider } from '../../services/address-provider.js';
+import { DEMO_HOUSE_ID } from '../../repositories/in-memory-case-repository.js';
 
 export async function registerHouseRoutes(app: FastifyInstance, addressProvider: AddressProvider): Promise<void> {
   const secured = { preHandler: app.authenticate };
@@ -80,7 +81,8 @@ export async function registerHouseRoutes(app: FastifyInstance, addressProvider:
       },
     },
     async (request, reply) => {
-      const houseId = app.config.hackathonHouseId;
+      const houseId = app.config.hackathonHouseId ||
+        (app.config.demoMode && app.config.storageMode === 'memory' ? DEMO_HOUSE_ID : undefined);
       if (!houseId) {
         return reply.code(404).send({ error: 'not_found', message: 'Демонстрационный дом не настроен' });
       }

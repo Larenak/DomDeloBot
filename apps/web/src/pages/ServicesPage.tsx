@@ -64,7 +64,7 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
   return <main className="page">
     <section className="hero"><div><span className="eyebrow">Услуги дома</span>
       <h1>Что доступно</h1>
-      <p>Открытые сведения о выбранном доме и переход к официальным услугам.</p>
+      <p>{house?.isDemo ? 'Учебный пример сведений о доме и переход к официальным услугам.' : 'Открытые сведения о выбранном доме и переход к официальным услугам.'}</p>
     </div></section>
     <section className="content-card">
       <h2>Обращения и ремонт</h2>
@@ -78,6 +78,7 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
       <Link className="button button--secondary" to="/polls">Открыть опросы</Link>
     </section>
     <p className="services-house-label">Сведения по дому: <strong>{house?.address || 'дом не выбран'}</strong></p>
+    {house?.isDemo ? <p className="demo-warning">Ниже вымышленные данные для демонстрации интерфейса. Это не сведения ГИС ЖКХ или ФРТ.</p> : null}
     <div className="service-grid">
       <section className="content-card">
         <h2>Управляющая компания</h2>
@@ -85,14 +86,15 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
           : management?.status === 'found' ? <>
             <p className="service-company">{management.name || (management.managementType === 'Непосредственное управление' ? 'Непосредственное управление домом' : 'Управляющая организация не указана')}</p>
             {management.managementType ? <p>Способ управления: {management.managementType}</p> : null}
-            <p className="service-source-note">Сведения ГИС ЖКХ за август 2026 в обработке «Если быть точным». Набор опубликован {formatDate(management.snapshotDate)}. Организация могла измениться. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+            {house?.isDemo ? <p className="service-source-note">Учебная управляющая организация; не связана с настоящим домом.</p>
+              : <p className="service-source-note">Сведения ГИС ЖКХ за август 2026 в обработке «Если быть точным». Набор опубликован {formatDate(management.snapshotDate)}. Организация могла измениться. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>}
             {management.organizationUrl ? <a className="button button--secondary" href={management.organizationUrl} target="_blank" rel="noopener noreferrer">Карточка организации в ГИС ЖКХ ↗</a> : null}
           </> : <p className="service-status">
             {management?.status === 'unavailable' ? 'Источник временно недоступен.'
               : house?.isDemo ? 'У демонстрационного дома нет записи в официальном реестре.'
                 : 'Для этого дома управляющая организация не найдена в открытом наборе.'}
           </p>}
-        <a className="service-source-link" href={management?.sourceUrl || 'https://tochno.st/datasets/gisgkh'} target="_blank" rel="noopener noreferrer">Источник данных ↗</a>
+        {!house?.isDemo ? <a className="service-source-link" href={management?.sourceUrl || 'https://tochno.st/datasets/gisgkh'} target="_blank" rel="noopener noreferrer">Источник данных ↗</a> : null}
       </section>
       <section className="content-card">
         <h2>Капитальный ремонт</h2>
@@ -116,14 +118,15 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
                   {work.contractor ? <small>Подрядчик: {work.contractor}</small> : null}
                 </li>)}</ul></details> : null}
             </> : <p>Перечень работ для этого дома в опубликованной выгрузке не найден.</p>}
-            {overhaul.snapshotDate ? <p className="service-source-note">Выгрузка ФРТ от {formatDate(overhaul.snapshotDate)}. Плановые сроки могут меняться.</p> : null}
+            {house?.isDemo ? <p className="service-source-note">Пример плана работ; даты и суммы вымышлены.</p>
+              : overhaul.snapshotDate ? <p className="service-source-note">Выгрузка ФРТ от {formatDate(overhaul.snapshotDate)}. Плановые сроки могут меняться.</p> : null}
           </> : <p className="service-status">
             {overhaul?.status === 'unavailable' ? 'Не удалось проверить региональную выгрузку. Это не означает, что дом отсутствует в программе.'
               : house?.isDemo ? 'У демонстрационного дома нет записи в региональной программе.'
                 : 'Дом не найден в опубликованной региональной программе.'}
           </p>}
-        <a className="service-source-link" href={overhaul?.sourceUrl || 'https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata'} target="_blank" rel="noopener noreferrer">Программа капремонта ФРТ ↗</a>
-        {overhaul?.worksSourceUrl ? <a className="service-source-link" href={overhaul.worksSourceUrl} target="_blank" rel="noopener noreferrer">Выгрузка работ ФРТ ↗</a> : null}
+        {!house?.isDemo ? <a className="service-source-link" href={overhaul?.sourceUrl || 'https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata'} target="_blank" rel="noopener noreferrer">Программа капремонта ФРТ ↗</a> : null}
+        {!house?.isDemo && overhaul?.worksSourceUrl ? <a className="service-source-link" href={overhaul.worksSourceUrl} target="_blank" rel="noopener noreferrer">Выгрузка работ ФРТ ↗</a> : null}
         <a className="service-source-link" href="https://cdn.dom.gosuslugi.ru/webhelp/new/topics/public_part/view_repairs_regional_address_plan-och.html" target="_blank" rel="noopener noreferrer">Как проверить программу в ГИС ЖКХ ↗</a>
       </section>
       {otherServices.map((service) => <section className="content-card" key={service.title}>

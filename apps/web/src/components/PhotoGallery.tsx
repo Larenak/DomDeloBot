@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 type Attachment = CaseDto['attachments'][number];
 
 function photoLabel(attachment: Attachment): string {
+  if (attachment.fileName === 'Учебная иллюстрация') return 'Учебная иллюстрация';
   return attachment.kind === 'result' ? 'Результат работы' : 'Фото проблемы';
 }
 

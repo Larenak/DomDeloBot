@@ -55,6 +55,11 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
 
   const item = query.data;
   const residentTransitions = getAvailableTransitions(item.status, 'resident');
+  const galleryAttachments = item.attachments.length ? item.attachments : item.isDemo ? [{
+    id: '70707070-7070-4070-8070-707070707070', kind: 'problem' as const,
+    url: '/demo-problem.svg', fileName: 'Учебная иллюстрация', mimeType: 'image/svg+xml',
+    createdAt: item.createdAt,
+  }] : [];
 
   return (
     <main className="page page--detail">
@@ -74,7 +79,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
             </span>
             <span className="case-number">Дело №{item.number}</span>
           </div>
-          {demoMode && item.isDemo ? <span className="demo-chip">Демо-данные</span> : null}
+          {item.isDemo ? <span className="demo-chip">Демо-данные</span> : null}
         </div>
         <h1>{item.title}</h1>
         <p className="detail-description">{item.description}</p>
@@ -115,7 +120,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
         <div className="section-heading section-heading--inside">
           <div><h2>Фотографии</h2><p>Доказательства проблемы и результата</p></div>
         </div>
-        {item.attachments.length ? <PhotoGallery attachments={item.attachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
+        {galleryAttachments.length ? <PhotoGallery attachments={galleryAttachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
         {(demoMode || !item.isDemo) ? <div className="upload-row">
           <select value={uploadKind} onChange={(event) => setUploadKind(event.target.value as 'problem' | 'result')}>
             <option value="problem">Фото проблемы</option>

@@ -57,6 +57,17 @@ afterEach(async () => {
 });
 
 describe('ДомДело API', () => {
+  it('offers the local demo house even without a production house id', async () => {
+    const app = await testApp();
+    const publicConfig = await app.inject({ method: 'GET', url: '/api/public-config' });
+    expect(publicConfig.json()).toMatchObject({ demoMode: true, demoHouseAvailable: true });
+    const joined = await app.inject({
+      method: 'POST', url: '/api/me/houses/demo', headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(joined.statusCode).toBe(200);
+    expect(joined.json().activeHouseId).toBe('11111111-1111-4111-8111-111111111111');
+  });
+
   it('does not accept demo roles when published', async () => {
     const productionConfig = loadConfig({
       NODE_ENV: 'production',

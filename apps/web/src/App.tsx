@@ -7,6 +7,7 @@ import { ErrorState, LoadingState } from './components/StateViews.js';
 import { CaseDetailPage } from './pages/CaseDetailPage.js';
 import { ComplaintDraftPage } from './pages/ComplaintDraftPage.js';
 import { CasesPage } from './pages/CasesPage.js';
+import { DemoPage } from './pages/DemoPage.js';
 import { DispatcherPage } from './pages/DispatcherPage.js';
 import { HouseOnboardingPage } from './pages/HouseOnboardingPage.js';
 import { HousesPage } from './pages/HousesPage.js';
@@ -33,7 +34,7 @@ const publicDemoRoles: Array<{ value: PublicDemoRole; label: string }> = [
   { value: 'authority', label: 'Госорган' },
 ];
 
-function AppShell({ demoMode }: { demoMode: boolean }) {
+function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHouseAvailable: boolean }) {
   const location = useLocation();
   const queryClient = useQueryClient();
   const houses = useQuery({
@@ -103,6 +104,7 @@ function AppShell({ demoMode }: { demoMode: boolean }) {
           {!isAuthority ? <NavLink to="/">Дела</NavLink> : null}
           <NavLink to="/polls">Опросы</NavLink>
           <NavLink to="/services">Услуги</NavLink>
+          {demoHouseAvailable ? <NavLink to="/demo">Демо</NavLink> : null}
           {canReport ? <NavLink to="/reports">Сводка</NavLink> : null}
           {isWorkRole ? <NavLink to="/dispatcher">Диспетчер</NavLink> : null}
         </nav>
@@ -126,13 +128,18 @@ function AppShell({ demoMode }: { demoMode: boolean }) {
         ) : null}
       </header>
 
+      {isDemoHouse ? <div className="demo-mode-banner" role="status">
+        Деморежим: дом и данные учебные. <NavLink to="/demo">Выбрать другую роль →</NavLink>
+      </div> : null}
+
       <Routes>
         <Route path="/" element={<CasesPage canCreate={canCreate} canWatch={canWatch} />} />
         <Route path="/new" element={canCreate ? <NewCasePage isDemoHouse={isDemoHouse} /> : <Navigate to={homePath} replace />} />
         <Route path="/cases/:caseId" element={<CaseDetailPage demoMode={demoMode} role={role} />} />
         <Route path="/cases/:caseId/complaint" element={<ComplaintDraftPage />} />
         <Route path="/dispatcher" element={<DispatcherPage role={role} />} />
-        <Route path="/houses" element={<HousesPage />} />
+        <Route path="/houses" element={<HousesPage demoHouseAvailable={demoHouseAvailable} />} />
+        <Route path="/demo" element={<DemoPage demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />} />
         <Route path="/polls" element={<PollsPage role={role} />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/services" element={<ServicesPage canCreate={canCreate} canManage={isWorkRole} />} />
@@ -156,13 +163,14 @@ function AppShell({ demoMode }: { demoMode: boolean }) {
 
 export default function App({ demoMode, demoHouseAvailable = false }: { demoMode: boolean; demoHouseAvailable?: boolean }) {
   const canUseApp = demoMode || Boolean(window.WebApp?.initData);
+  const location = useLocation();
   const query = useQuery({
     queryKey: ['house-context'],
     queryFn: houseApi.context,
     retry: 1,
     enabled: canUseApp,
   });
-  if (!canUseApp) return <AppShell demoMode={demoMode} />;
+  if (!canUseApp) return <AppShell demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
   if (query.isPending) {
     return <main className="address-onboarding"><LoadingState label="Проверяем адреса" /></main>;
   }
@@ -173,6 +181,11 @@ export default function App({ demoMode, demoHouseAvailable = false }: { demoMode
       </main>
     );
   }
-  if (query.data.onboardingRequired) return <HouseOnboardingPage demoHouseAvailable={demoHouseAvailable} />;
-  return <AppShell demoMode={demoMode} />;
+  if (query.data.onboardingRequired) {
+    if (location.pathname === '/demo' && demoHouseAvailable) {
+      return <DemoPage demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
+    }
+    return <HouseOnboardingPage demoHouseAvailable={demoHouseAvailable} />;
+  }
+  return <AppShell demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
 }

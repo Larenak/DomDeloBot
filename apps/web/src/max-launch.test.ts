@@ -9,6 +9,11 @@ describe('MAX launch payload', () => {
     ).toBe('/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });
 
+  it('opens the selected demo role without accepting arbitrary paths', () => {
+    expect(pathFromMaxStartParam('demo_dispatcher')).toBe('/demo?role=dispatcher');
+    expect(pathFromMaxStartParam('demo_admin')).toBeUndefined();
+  });
+
   it('ignores an unknown or unsafe payload', () => {
     expect(pathFromMaxStartParam('../dispatcher')).toBeUndefined();
   });

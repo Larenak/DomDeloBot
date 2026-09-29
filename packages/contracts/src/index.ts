@@ -66,6 +66,7 @@ export type AddressSuggestionDto = Static<typeof AddressSuggestionSchema>;
 
 export const PublicHousingDataSchema = Type.Object({
   houseId: Type.String({ format: 'uuid' }),
+  isDemo: Type.Optional(Type.Boolean()),
   management: Type.Object({
     status: Type.Union([Type.Literal('found'), Type.Literal('missing'), Type.Literal('unavailable')]),
     name: Type.Optional(Type.String()),

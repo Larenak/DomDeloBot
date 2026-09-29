@@ -23,6 +23,24 @@ const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
 afterEach(async () => { await Promise.all(apps.splice(0).map((app) => app.close())); });
 
 describe('public house services', () => {
+  it('shows explicitly fictional management and overhaul data only in the demo house', async () => {
+    const get = vi.fn();
+    const app = await buildApp({ config, addressProvider, publicHousingDataProvider: { get } });
+    apps.push(app);
+    const headers = { 'x-demo-user': 'resident-1' };
+    const joined = await app.inject({ method: 'POST', url: '/api/me/houses/demo', headers });
+    expect(joined.statusCode).toBe(200);
+    const response = await app.inject({ method: 'GET', url: '/api/services/house', headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      isDemo: true,
+      management: { status: 'found', name: 'УК «Наш дом»' },
+      overhaul: { status: 'found' },
+    });
+    expect(response.json().overhaul.works).toHaveLength(3);
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it('uses only the active house and requires authentication', async () => {
     const get = vi.fn(async (houseId: string, fiasId?: string): Promise<PublicHousingData> => ({
       houseId,

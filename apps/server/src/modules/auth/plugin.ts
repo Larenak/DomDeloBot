@@ -13,7 +13,8 @@ const publicDemoRoles = new Set<UserRole>(['resident', 'owner', 'tenant', 'chair
 export async function registerAuth(app: FastifyInstance, db?: Database): Promise<void> {
   app.get('/api/public-config', async () => ({
     demoMode: app.config.demoMode,
-    ...(app.config.hackathonHouseId ? { demoHouseAvailable: true } : {}),
+    ...((app.config.hackathonHouseId || (app.config.demoMode && app.config.storageMode === 'memory'))
+      ? { demoHouseAvailable: true } : {}),
   }));
 
   app.decorate('authenticate', async (request, reply) => {

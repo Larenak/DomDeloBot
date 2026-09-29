@@ -20,6 +20,23 @@ export async function registerServiceRoutes(
       error: 'house_required',
       message: 'Выберите дом, чтобы увидеть сведения об услугах.',
     });
+    if (house.isDemo) return {
+      houseId: house.id,
+      isDemo: true,
+      management: {
+        status: 'found' as const, name: 'УК «Наш дом»', managementType: 'УО',
+        sourceUrl: '', snapshotDate: 'Учебный пример',
+      },
+      overhaul: {
+        status: 'found' as const, sourceUrl: '', fundingMethod: 'Счёт регионального оператора',
+        contributionRubPerSqM: 12.5,
+        works: [
+          { type: 'Ремонт крыши', plannedYear: '2028' },
+          { type: 'Ремонт внутридомовой системы водоснабжения', plannedYear: '2029' },
+          { type: 'Ремонт фасада', plannedYear: '2031' },
+        ],
+      },
+    };
     return provider.get(house.id, house.fiasId);
   });
 }
