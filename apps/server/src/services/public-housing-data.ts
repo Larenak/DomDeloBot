@@ -79,7 +79,9 @@ function reportLinks(html: string): Map<string, string> {
     const kind = match[1]!;
     if (links.has(kind)) continue;
     const next = titles[i + 1]?.index ?? html.length;
-    const nearby = html.slice(match.index!, Math.min(next, match.index! + 4000));
+    // FRT inserts long inline SVGs between the report title and its export link.
+    // Bound the search by the next report title, not an arbitrary character count.
+    const nearby = html.slice(match.index!, next);
     const id = nearby.match(/(?:href=["']|href=)\/?(?:https?:\/\/[^/"']+\/)?opendata\/export\/(\d+)/i)?.[1];
     if (id) links.set(kind, FRT + '/opendata/export/' + id);
   }

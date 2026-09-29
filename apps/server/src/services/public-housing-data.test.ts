@@ -40,6 +40,10 @@ const options = '<select>' + Array.from({ length: 69 }, (_, i) =>
   '<option class="region" value="70">Пермский край</option></select>';
 const reports = '<article>Многоквартирные дома (отчет КР 1.1) <a href="/opendata/export/101">Экспорт</a></article>' +
   '<article>Работы по капитальному ремонту (КР 1.3) <a href="/opendata/export/103">Экспорт</a></article>';
+const reportsWithInlineSvg = '<article>Многоквартирные дома (КР 1.1)' + '<svg></svg>'.repeat(900) +
+  '<a href="/opendata/export/101">Экспорт</a></article>' +
+  '<article>Работы по капитальному ремонту (КР 1.3)' + '<svg></svg>'.repeat(900) +
+  '<a href="/opendata/export/103">Экспорт</a></article>';
 const houseCsv = `houseguid;mkd_code;mun_obr_oktmo;money_collecting_way;overhaul_funds_balance;owners_payment;inclusion_date_to_program;update_date_of_information\n${fiasId};42;57701000;Региональный оператор;123,5;9,36;2015-01-01;2026-09-01\n`;
 const worksCsv = 'mkd_code;mun_obr_oktmo;service_type;service_date;fact_date_services_finished;contractor_name\n42;57701000;Ремонт крыши;2028;;Подрядчик\n';
 
@@ -64,6 +68,21 @@ describe('public overhaul data', () => {
       type: 'Ремонт крыши', plannedYear: '2028', contractor: 'Подрядчик',
     }]);
     expect(data.overhaul.snapshotDate).toBe('2026-09-01');
+  });
+
+  it('finds export links after long inline SVG markup on the real FRT page', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === FRT + '/opendata') return new Response(options);
+      if (url.includes('gid=70')) return new Response(reportsWithInlineSvg);
+      if (url.endsWith('/101')) return new Response(zipCsv(houseCsv));
+      if (url.endsWith('/103')) return new Response(zipCsv(worksCsv));
+      throw new Error('Unexpected URL ' + url);
+    }));
+
+    const data = await new PublicHousingDataProvider(addressProvider).get('house-1', fiasId);
+    expect(data.overhaul.status).toBe('found');
+    expect(data.overhaul.works).toHaveLength(1);
   });
 
   it('reports source denial as unavailable, not as an absent house', async () => {
