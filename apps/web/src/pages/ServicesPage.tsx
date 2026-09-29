@@ -118,12 +118,13 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
             </> : <p>Перечень работ для этого дома в опубликованной выгрузке не найден.</p>}
             {overhaul.snapshotDate ? <p className="service-source-note">Выгрузка ФРТ от {formatDate(overhaul.snapshotDate)}. Плановые сроки могут меняться.</p> : null}
           </> : <p className="service-status">
-            {overhaul?.status === 'unavailable' ? 'Региональная выгрузка временно недоступна.'
+            {overhaul?.status === 'unavailable' ? 'Не удалось проверить региональную выгрузку. Это не означает, что дом отсутствует в программе.'
               : house?.isDemo ? 'У демонстрационного дома нет записи в региональной программе.'
                 : 'Дом не найден в опубликованной региональной программе.'}
           </p>}
         <a className="service-source-link" href={overhaul?.sourceUrl || 'https://xn--80adsazqn.xn--p1aee.xn--p1ai/opendata'} target="_blank" rel="noopener noreferrer">Программа капремонта ФРТ ↗</a>
         {overhaul?.worksSourceUrl ? <a className="service-source-link" href={overhaul.worksSourceUrl} target="_blank" rel="noopener noreferrer">Выгрузка работ ФРТ ↗</a> : null}
+        <a className="service-source-link" href="https://cdn.dom.gosuslugi.ru/webhelp/new/topics/public_part/view_repairs_regional_address_plan-och.html" target="_blank" rel="noopener noreferrer">Как проверить программу в ГИС ЖКХ ↗</a>
       </section>
       {otherServices.map((service) => <section className="content-card" key={service.title}>
         <h2>{service.title}</h2>

@@ -58,7 +58,32 @@ type Reports = { house: string; works?: string | undefined; loadedAt: number };
 async function textFrom(url: string): Promise<string> {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error('Source returned ' + response.status);
-  return response.text();
+  const text = await response.text();
+  // The public FRT site sometimes returns a WAF page instead of the catalogue.
+  if (text.includes('wallarm-logo') || text.includes('You are blocked')) throw new Error('FRT access denied');
+  return text;
+}
+
+function normalizeRegion(value: string): string {
+  return value.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е')
+    .replace(/(?:респ(?:ублика)?|обл(?:асть)?|город|г\.|автономный округ|ао)/g, '')
+    .replace(/[^а-яa-z0-9]/g, '');
+}
+
+function reportLinks(html: string): Map<string, string> {
+  const links = new Map<string, string>();
+  // Titles and export buttons are in the same card, but the site's CSS classes change.
+  const titles = [...html.matchAll(/КР\s*1[.\-]\s*([13])/gi)];
+  for (let i = 0; i < titles.length; i++) {
+    const match = titles[i]!;
+    const kind = match[1]!;
+    if (links.has(kind)) continue;
+    const next = titles[i + 1]?.index ?? html.length;
+    const nearby = html.slice(match.index!, Math.min(next, match.index! + 4000));
+    const id = nearby.match(/(?:href=["']|href=)\/?(?:https?:\/\/[^/"']+\/)?opendata\/export\/(\d+)/i)?.[1];
+    if (id) links.set(kind, FRT + '/opendata/export/' + id);
+  }
+  return links;
 }
 
 function parseCsvLine(line: string): string[] {
@@ -162,7 +187,9 @@ export class PublicHousingDataProvider {
     if (this.regionIds && Date.now() - this.regionIds.loadedAt < 86_400_000) return this.regionIds.values;
     const html = await textFrom(FRT + '/opendata');
     const values = new Map<string, string>();
-    for (const found of html.matchAll(/<option value="(\d+)"[^>]*>([^<]+)<\/option>/g)) values.set(found[2]!, found[1]!);
+    for (const found of html.matchAll(/<option\b[^>]*\bvalue\s*=\s*["']?(\d+)["']?[^>]*>([^<]+)<\/option>/gi)) {
+      values.set(found[2]!.trim(), found[1]!);
+    }
     if (values.size < 70) throw new Error('Incomplete FRT region list');
     this.regionIds = { values, loadedAt: Date.now() };
     return values;
@@ -173,16 +200,13 @@ export class PublicHousingDataProvider {
     if (cached && Date.now() - cached.loadedAt < 86_400_000) return cached;
     const regions = await this.getRegions();
     const regionName = ALIASES[region] || region.replace(/^г /, 'город ');
-    const normalize = (value: string) => value.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').replace(/(?:респ(?:ублика)?|обл(?:асть)?|город|г\.|автономный округ|ао)/g, '').replace(/[^а-яa-z0-9]/g, '');
-    const gid = regions.get(regionName) || [...regions].find(([name]) => normalize(name) === normalize(regionName))?.[1];
+    const gid = regions.get(regionName) || [...regions].find(([name]) => normalizeRegion(name) === normalizeRegion(regionName))?.[1];
     if (!gid) return undefined;
-    const html = await textFrom(FRT + '/opendata?gid=' + gid + '&cids=overhaul&page=1&pageSize=12');
     const ids = new Map<string, string>();
-    for (const card of html.split('<div class="lh-27 f-28 fw-500 mt-48">').slice(1)) {
-      const title = card.split('</div>', 1)[0] || '';
-      const kind = title.match(/КР\s*1\.(1|3)/)?.[1];
-      const id = card.match(/href="\/opendata\/export\/(\d+)"/)?.[1];
-      if (kind && id) ids.set(kind, FRT + '/opendata/export/' + id);
+    for (let page = 1; page <= 10 && (!ids.has('1') || !ids.has('3')); page++) {
+      const html = await textFrom(FRT + '/opendata?gid=' + gid + '&cids=overhaul&page=' + page + '&pageSize=12');
+      for (const [kind, url] of reportLinks(html)) ids.set(kind, url);
+      if (!html.includes('/opendata/export/')) break;
     }
     const house = ids.get('1');
     if (!house) return undefined;
@@ -229,11 +253,21 @@ export class PublicHousingDataProvider {
         management.organizationUrl = row[4].startsWith('https://dom.gosuslugi.ru/') ? row[4] : undefined;
       }
     }
-    const region = ukRows[0]?.[1];
-    if (!region) return { houseId, management, overhaul };
+    let region = ukRows[0]?.[1];
+    if (!region && this.addressProvider) {
+      try { region = (await this.addressProvider.resolveHouse(key))?.region; }
+      catch { /* The address source must not hide already-known UK data. */ }
+    }
+    if (!region) {
+      overhaul.status = 'unavailable';
+      return { houseId, management, overhaul };
+    }
     try {
       const reports = await this.getReports(region);
-      if (!reports) return { houseId, management, overhaul };
+      if (!reports) {
+        overhaul.status = 'unavailable';
+        return { houseId, management, overhaul };
+      }
       overhaul.sourceUrl = reports.house;
       overhaul.worksSourceUrl = reports.works;
       let match: Row | undefined;
@@ -243,7 +277,11 @@ export class PublicHousingDataProvider {
         if (match) duplicate = true;
         else match = row;
       });
-      if (!match || duplicate) return { houseId, management, overhaul };
+      if (duplicate) {
+        overhaul.status = 'unavailable';
+        return { houseId, management, overhaul };
+      }
+      if (!match) return { houseId, management, overhaul };
       const house = match as Row;
       overhaul.status = 'found';
       overhaul.updatedAt = house.update_date_of_information || undefined;
