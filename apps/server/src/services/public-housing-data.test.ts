@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { AddressProvider } from './address-provider.js';
-import { PublicHousingDataProvider } from './public-housing-data.js';
+import { PublicHousingDataProvider, scanZipCsv } from './public-housing-data.js';
 
 const FRT = 'https://xn--80adsazqn.xn--p1aee.xn--p1ai';
 const fiasId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
@@ -62,6 +62,32 @@ describe('public overhaul data', () => {
     expect(data.overhaul.status).toBe('found');
     expect(data.overhaul.works.length).toBeGreaterThan(0);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('finds a Rostov house in the bundled snapshot', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('FRT blocked'); }));
+    const id = 'a084e156-f488-48c3-99f0-a64721ff0c26';
+    const rostovAddress: AddressProvider = {
+      ...addressProvider,
+      resolveHouse: async () => ({
+        fiasId: id, address: 'Ростовская область, проверочный дом',
+        region: 'Ростовская область', city: 'Ростов-на-Дону', street: '', building: '1',
+      }),
+    };
+    const data = await new PublicHousingDataProvider(rostovAddress).get('rostov-house', id);
+    expect(data.overhaul.status).toBe('found');
+    expect(data.overhaul.works.length).toBeGreaterThan(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts an official ZIP whose declared expanded CSV size exceeds 250 MiB', async () => {
+    const archive = Buffer.from(zipCsv('houseguid;mkd_code\nexample;1\n'));
+    const eocd = archive.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    archive.writeUInt32LE(277 * 1024 * 1024, archive.readUInt32LE(eocd + 16) + 24);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(archive)));
+    const rows: Record<string, string>[] = [];
+    await scanZipCsv(FRT + '/opendata/export/389', (row) => rows.push(row));
+    expect(rows).toEqual([{ houseguid: 'example', mkd_code: '1' }]);
   });
 
   it('uses a dated local snapshot when the FRT site is blocked', async () => {

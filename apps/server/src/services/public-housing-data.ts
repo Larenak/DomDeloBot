@@ -125,7 +125,9 @@ export async function scanZipCsv(url: string, visit: (row: Row) => void): Promis
   const uncompressedSize = zip.readUInt32LE(entry + 24);
   const offset = zip.readUInt32LE(entry + 42);
   const filename = zip.subarray(entry + 46, entry + 46 + zip.readUInt16LE(entry + 28)).toString('utf8');
-  if (compressedSize > zip.length || uncompressedSize > 250 * 1024 * 1024 || zip.readUInt32LE(offset) !== 0x04034b50) {
+  // Some regional work exports (for example Rostov) exceed 250 MiB once inflated.
+  // CSV rows are streamed below, so this guard can be higher than the in-memory ZIP cap.
+  if (compressedSize > zip.length || uncompressedSize > 512 * 1024 * 1024 || zip.readUInt32LE(offset) !== 0x04034b50) {
     throw new Error('Invalid ZIP entry');
   }
   const start = offset + 30 + zip.readUInt16LE(offset + 26) + zip.readUInt16LE(offset + 28);
