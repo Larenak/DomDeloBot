@@ -92,6 +92,7 @@ export class PostgresCaseRepository implements CaseRepository {
         role: users.role,
         displayName: users.displayName,
         activeHouseId: users.activeHouseId,
+        maxUserId: users.maxUserId,
       })
       .from(users)
       .where(eq(users.id, actor.id))
@@ -122,6 +123,7 @@ export class PostgresCaseRepository implements CaseRepository {
       id: user.id,
       role: verifiedRole ?? 'resident',
       displayName: user.displayName,
+      ...(user.maxUserId ? { maxUserId: user.maxUserId.toString() } : {}),
       isDemoHouse,
       ...(houseId ? { houseId } : {}),
     };

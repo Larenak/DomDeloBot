@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "invite:house": "tsx src/db/issue-house-invite.ts",
     "openapi:export": "tsx src/openapi-export.ts"
   },
   "dependencies": {

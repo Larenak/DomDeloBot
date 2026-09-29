@@ -24,7 +24,7 @@ export function setPublicDemoRole(role: PublicDemoRole): void {
   localStorage.setItem(PUBLIC_DEMO_ROLE_KEY, role);
 }
 
-type SessionActor = { id: string; role: 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority' | 'admin'; houseId: string; displayName: string };
+type SessionActor = { id: string; role: 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority' | 'admin'; houseId?: string; displayName: string; maxUserId?: string };
 
 export function getSessionActor(): SessionActor | null {
   try {
@@ -104,6 +104,15 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) throw await toApiError(response);
   return (await response.json()) as T;
 }
+
+export const registrationApi = {
+  identity: () => api<{ actor: SessionActor }>('/api/auth/me'),
+  redeemHouseInvite: (code: string) => api<{ actor: SessionActor }>('/api/auth/house-invite', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code }),
+  }),
+};
 
 export const caseApi = {
   list: () => api<CaseDto[]>('/api/cases'),

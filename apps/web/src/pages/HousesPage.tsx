@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { houseApi } from '../api.js';
 import { HouseAddressForm } from '../components/HouseAddressForm.js';
+import { InviteRegistrationForm } from '../components/InviteRegistrationForm.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 
 export function HousesPage() {
@@ -60,6 +61,7 @@ export function HousesPage() {
         <h2>Добавить ещё один дом</h2>
         <HouseAddressForm compact />
       </section>
+      <InviteRegistrationForm />
     </main>
   );
 }

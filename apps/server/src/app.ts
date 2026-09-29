@@ -128,7 +128,7 @@ export async function buildApp(options: BuildAppOptions) {
   });
   await app.register(swaggerUi, { routePrefix: '/docs' });
 
-  await registerAuth(app);
+  await registerAuth(app, database?.db);
   await registerHealthRoutes(app);
   await registerHouseRoutes(app, options.addressProvider || (options.config.demoMode && !options.config.dadataApiKey ? new DemoAddressProvider() : new DadataAddressProvider(options.config.dadataApiKey)));
   await registerCaseRoutes(app);

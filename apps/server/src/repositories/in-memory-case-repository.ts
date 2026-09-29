@@ -257,6 +257,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       id: randomUUID(),
       role: 'resident',
       displayName: input.displayName,
+      maxUserId: input.maxUserId.toString(),
     };
     this.maxActors.set(input.maxUserId, actor);
     return actor;

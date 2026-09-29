@@ -92,6 +92,17 @@ export const houseRoleGrants = pgTable('house_role_grants', {
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
 }, (table) => [primaryKey({ columns: [table.houseId, table.userId] })]);
+export const houseInvites = pgTable('house_invites', {
+  codeHash: text('code_hash').primaryKey(),
+  houseId: uuid('house_id').notNull().references(() => houses.id, { onDelete: 'cascade' }),
+  maxUserId: bigint('max_user_id', { mode: 'bigint' }).notNull(),
+  role: userRoleEnum('role').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  usedBy: uuid('used_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index('house_invites_target_idx').on(table.maxUserId, table.expiresAt)]);
+
 export const chatBindings = pgTable('chat_bindings', {
   id: uuid('id').primaryKey().defaultRandom(),
   houseId: uuid('house_id')
