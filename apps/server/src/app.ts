@@ -143,7 +143,7 @@ export async function buildApp(options: BuildAppOptions) {
   await registerHouseRoutes(app, addressProvider);
   await registerCaseRoutes(app);
   await registerPollRoutes(app);
-  await registerServiceRoutes(app, options.publicHousingDataProvider || new PublicHousingDataProvider(addressProvider));
+  await registerServiceRoutes(app, options.publicHousingDataProvider || new PublicHousingDataProvider(addressProvider, app.log));
   await registerWebhookRoutes(app, notifier);
 
   if (objectStorage.get) {

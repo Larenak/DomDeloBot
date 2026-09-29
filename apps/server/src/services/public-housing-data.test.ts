@@ -87,8 +87,12 @@ describe('public overhaul data', () => {
 
   it('reports source denial as unavailable, not as an absent house', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('You are blocked', { status: 403 })));
-    const data = await new PublicHousingDataProvider(addressProvider).get('house-1', fiasId);
+    const warn = vi.fn();
+    const data = await new PublicHousingDataProvider(addressProvider, { warn }).get('house-1', fiasId);
     expect(data.overhaul.status).toBe('unavailable');
+    expect(warn).toHaveBeenCalledWith(expect.objectContaining({
+      reason: 'regional_export_failed', region: 'Пермский край',
+    }), 'Overhaul lookup unavailable');
   });
 
   it('distinguishes a checked archive without the house from a missing regional export', async () => {

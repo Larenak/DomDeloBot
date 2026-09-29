@@ -54,6 +54,7 @@ export type PublicHousingData = {
 type UkRecord = [string, string, string, string, string];
 type Row = Record<string, string>;
 type Reports = { house: string; works?: string | undefined; loadedAt: number };
+type WarningLogger = { warn: (details: Record<string, unknown>, message: string) => void };
 
 async function textFrom(url: string): Promise<string> {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -159,7 +160,10 @@ async function scanZipCsv(url: string, visit: (row: Row) => void): Promise<strin
 }
 
 export class PublicHousingDataProvider {
-  constructor(private readonly addressProvider?: AddressProvider) {}
+  constructor(
+    private readonly addressProvider?: AddressProvider,
+    private readonly logger?: WarningLogger,
+  ) {}
   private ukCache = new Map<string, Map<string, UkRecord[]>>();
   private regionIds?: { values: Map<string, string>; loadedAt: number };
   private reports = new Map<string, Reports>();
@@ -262,12 +266,14 @@ export class PublicHousingDataProvider {
     }
     if (!region) {
       overhaul.status = 'unavailable';
+      this.logger?.warn({ reason: 'region_not_resolved' }, 'Overhaul lookup unavailable');
       return { houseId, management, overhaul };
     }
     try {
       const reports = await this.getReports(region);
       if (!reports) {
         overhaul.status = 'unavailable';
+        this.logger?.warn({ reason: 'regional_export_not_found', region }, 'Overhaul lookup unavailable');
         return { houseId, management, overhaul };
       }
       overhaul.sourceUrl = reports.house;
@@ -281,6 +287,7 @@ export class PublicHousingDataProvider {
       });
       if (duplicate) {
         overhaul.status = 'unavailable';
+        this.logger?.warn({ reason: 'duplicate_house_records', region }, 'Overhaul lookup unavailable');
         return { houseId, management, overhaul };
       }
       if (!match) return { houseId, management, overhaul };
@@ -304,12 +311,18 @@ export class PublicHousingDataProvider {
               contractor: row.contractor_name || undefined,
             });
           });
-        } catch { overhaul.worksSourceUrl = undefined; }
+        } catch (error) {
+          this.logger?.warn({ err: error, region, reason: 'works_export_failed' }, 'Overhaul works lookup unavailable');
+          overhaul.worksSourceUrl = undefined;
+        }
       }
       overhaul.works.sort((a, b) => Number(Boolean(a.completedDate)) - Number(Boolean(b.completedDate)) ||
         (a.completedDate ? (b.plannedYear || '').localeCompare(a.plannedYear || '') : (a.plannedYear || '').localeCompare(b.plannedYear || '')));
       overhaul.works = overhaul.works.slice(0, 60);
-    } catch { overhaul.status = 'unavailable'; }
+    } catch (error) {
+      this.logger?.warn({ err: error, region, reason: 'regional_export_failed' }, 'Overhaul lookup unavailable');
+      overhaul.status = 'unavailable';
+    }
     return { houseId, management, overhaul };
   }
 }
