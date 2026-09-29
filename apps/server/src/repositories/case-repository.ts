@@ -1,16 +1,20 @@
 import type {
   CaseDto,
+  HouseReportDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 import type { CaseStatus } from '@domdelo/domain';
 
 import type { AuthenticatedActor } from '../types.js';
+import type { VerifiedHouse } from '../services/address-provider.js';
 
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
 export class ForbiddenError extends Error {}
+export class AddressOnboardingRequiredError extends ForbiddenError {}
 
 export type AttachmentUpload = {
   kind: 'problem' | 'result';
@@ -23,12 +27,18 @@ export type AttachmentUpload = {
 
 export interface CaseRepository {
   ready(): Promise<boolean>;
+  refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor>;
   resolveMaxUser(input: {
     maxUserId: bigint;
     displayName: string;
     maxChatId?: bigint;
   }): Promise<AuthenticatedActor>;
+  getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto>;
+  addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto>;
+  joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
+  selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]>;
+  getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto>;
   getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   findDuplicates(actor: AuthenticatedActor, input: DuplicateSearchInput): Promise<CaseDto[]>;
   createCase(
@@ -38,6 +48,7 @@ export interface CaseRepository {
   ): Promise<CaseDto>;
   confirmCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   watchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
+  unwatchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   transitionCase(
     actor: AuthenticatedActor,
     caseId: string,

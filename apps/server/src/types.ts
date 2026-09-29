@@ -3,16 +3,19 @@ import type { WorkflowActor } from '@domdelo/domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import type { CaseRepository } from './repositories/case-repository.js';
+import type { PollRepository } from './repositories/poll-repository.js';
 import type { ObjectStorage } from './services/object-storage.js';
 
 export type AuthenticatedActor = WorkflowActor & {
   displayName: string;
+  isDemoHouse?: boolean;
 };
 
 declare module 'fastify' {
   interface FastifyInstance {
     config: AppConfig;
     caseRepository: CaseRepository;
+    pollRepository: PollRepository;
     objectStorage: ObjectStorage;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }

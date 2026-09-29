@@ -1,7 +1,9 @@
 import type {
   CaseDto,
+  HouseReportDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 import {
@@ -12,7 +14,10 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedActor } from '../types.js';
+import type { VerifiedHouse } from '../services/address-provider.js';
+import { makeHouseReport } from '../modules/cases/report.js';
 import {
+  AddressOnboardingRequiredError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -21,30 +26,51 @@ import {
 } from './case-repository.js';
 
 export const DEMO_HOUSE_ID = '11111111-1111-4111-8111-111111111111';
+export const DEMO_ADDRESS = 'г. Казань, ул. Спортивная, 12';
 
 export const demoActors: Record<string, AuthenticatedActor> = {
   'resident-1': {
     id: '22222222-2222-4222-8222-222222222222',
     role: 'resident',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Анна Петрова',
   },
   'resident-2': {
     id: '33333333-3333-4333-8333-333333333333',
     role: 'resident',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Михаил Соколов',
+  },
+  'owner-1': {
+    id: '10101010-1010-4010-8010-101010101010',
+    role: 'owner',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Ольга, собственник',
+  },
+  'tenant-1': {
+    id: '20202020-2020-4020-8020-202020202020',
+    role: 'tenant',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Денис, арендатор',
+  },
+  'chair-1': {
+    id: '30303030-3030-4030-8030-303030303030',
+    role: 'chair',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Марина, председатель совета дома',
+  },
+  'authority-1': {
+    id: '40404040-4040-4040-8040-404040404040',
+    role: 'authority',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Представитель муниципалитета',
   },
   'dispatcher-1': {
     id: '44444444-4444-4444-8444-444444444444',
     role: 'dispatcher',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Елена, диспетчер УК',
   },
   'executor-1': {
     id: '55555555-5555-4555-8555-555555555555',
     role: 'executor',
-    houseId: DEMO_HOUSE_ID,
     displayName: 'Илья, электрик',
   },
 };
@@ -67,6 +93,7 @@ function seedCases(): CaseDto[] {
       status: 'registered',
       confirmationsCount: 6,
       watchersCount: 4,
+      isWatched: false,
       responsibleOrganization: 'УК «Наш дом»',
       version: 1,
       isDemo: true,
@@ -95,6 +122,7 @@ function seedCases(): CaseDto[] {
       status: 'in_progress',
       confirmationsCount: 3,
       watchersCount: 5,
+      isWatched: false,
       responsibleOrganization: 'УК «Наш дом»',
       assignee: 'Мастер участка Сергей',
       version: 3,
@@ -145,15 +173,31 @@ function similarity(left: string, right: string): number {
   return intersection / (a.size + b.size - intersection);
 }
 
-function cloneCase(item: CaseDto): CaseDto {
-  return structuredClone(item);
-}
-
 function ensureResidentOrAdmin(actor: AuthenticatedActor): void {
-  if (!['resident', 'admin'].includes(actor.role)) {
+  if (!['resident', 'owner', 'tenant', 'chair', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
   }
 }
+
+function activeHouseId(actor: AuthenticatedActor): string {
+  if (!actor.houseId) {
+    throw new AddressOnboardingRequiredError('Сначала добавьте адрес дома');
+  }
+  return actor.houseId;
+}
+
+function normalizedAddressPart(value: string): string {
+  return value
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/gu, 'е')
+    .replace(/[^a-zа-я0-9]/giu, '');
+}
+
+function legacyAddressKey(input: VerifiedHouse): string {
+  return [input.city, input.street, input.building].map(normalizedAddressPart).join('|');
+}
+
+type StoredHouse = { id: string; address: string; normalizedAddress: string; isDemo: boolean; fiasId?: string };
 
 export class InMemoryCaseRepository implements CaseRepository {
   private readonly items = seedCases();
@@ -161,8 +205,27 @@ export class InMemoryCaseRepository implements CaseRepository {
   private readonly watchers = new Set<string>();
   private readonly webhookEvents = new Set<string>();
   private readonly idempotencyKeys = new Map<string, string>();
+  private readonly houses = new Map<string, StoredHouse>([
+    [
+      DEMO_HOUSE_ID,
+      {
+        id: DEMO_HOUSE_ID,
+        address: 'г. Казань, ул. Спортивная, д. 12',
+        normalizedAddress: 'казань|спортивная|12',
+        isDemo: true,
+      },
+    ],
+  ]);
+  private readonly favoriteHouses = new Map<string, Set<string>>();
+  private readonly activeHouseIds = new Map<string, string>();
+  private readonly maxActors = new Map<bigint, AuthenticatedActor>();
 
   constructor() {
+    for (const actorKey of ['owner-1', 'tenant-1', 'chair-1', 'authority-1', 'dispatcher-1', 'executor-1']) {
+      const actorId = demoActors[actorKey]!.id;
+      this.favoriteHouses.set(actorId, new Set([DEMO_HOUSE_ID]));
+      this.activeHouseIds.set(actorId, DEMO_HOUSE_ID);
+    }
     for (const actorKey of ['resident-1', 'resident-2']) {
       const actor = demoActors[actorKey]!;
       this.confirmations.add(`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:${actor.id}`);
@@ -176,30 +239,129 @@ export class InMemoryCaseRepository implements CaseRepository {
     return true;
   }
 
-  async resolveMaxUser(): Promise<AuthenticatedActor> {
-    return demoActors['resident-1']!;
+  async refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor> {
+    const demo = Object.values(demoActors).find((known) => known.id === actor.id);
+    const houseId = this.activeHouseIds.get(actor.id);
+    return {
+      ...actor,
+      ...(houseId ? { houseId } : {}),
+      role: houseId === DEMO_HOUSE_ID ? demo?.role ?? 'resident' : 'resident',
+      isDemoHouse: houseId === DEMO_HOUSE_ID,
+    };
+  }
+
+  async resolveMaxUser(input: { maxUserId: bigint; displayName: string }): Promise<AuthenticatedActor> {
+    const existing = this.maxActors.get(input.maxUserId);
+    if (existing) return existing;
+    const actor: AuthenticatedActor = {
+      id: randomUUID(),
+      role: 'resident',
+      displayName: input.displayName,
+    };
+    this.maxActors.set(input.maxUserId, actor);
+    return actor;
+  }
+
+  async getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto> {
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    const items = [...favorites]
+      .map((id) => this.houses.get(id))
+      .filter((house): house is NonNullable<typeof house> => Boolean(house));
+    return {
+      houses: items.map((house) => ({
+        id: house.id,
+        address: house.address,
+        isActive: house.id === actor.houseId,
+        isDemo: house.isDemo,
+      })),
+      ...(actor.houseId && favorites.has(actor.houseId) ? { activeHouseId: actor.houseId, activeRole: actor.role } : {}),
+      onboardingRequired: items.length === 0,
+      accessPending: false,
+    };
+  }
+
+  async addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto> {
+    let house = [...this.houses.values()].find(
+      (candidate) => candidate.fiasId === input.fiasId,
+    );
+    if (!house) {
+      house = [...this.houses.values()].find(
+        (candidate) => !candidate.fiasId && candidate.normalizedAddress === legacyAddressKey(input),
+      );
+      if (house) {
+        house.fiasId = input.fiasId;
+        house.address = input.address;
+      }
+    }
+    if (!house) {
+      house = {
+        id: randomUUID(), address: input.address,
+        normalizedAddress: `gar|${input.fiasId}`, fiasId: input.fiasId, isDemo: false,
+      };
+      this.houses.set(house.id, house);
+    }
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    favorites.add(house.id);
+    this.favoriteHouses.set(actor.id, favorites);
+    actor.houseId = house.id;
+    this.activeHouseIds.set(actor.id, house.id);
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    if (houseId !== DEMO_HOUSE_ID || !this.houses.get(houseId)?.isDemo) {
+      throw new NotFoundError('Демонстрационный дом не найден');
+    }
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    favorites.add(houseId);
+    this.favoriteHouses.set(actor.id, favorites);
+    this.activeHouseIds.set(actor.id, houseId);
+    actor.houseId = houseId;
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    if (!this.favoriteHouses.get(actor.id)?.has(houseId)) {
+      throw new ForbiddenError('Сначала добавьте этот адрес в «Мои дома»');
+    }
+    actor.houseId = houseId;
+    this.activeHouseIds.set(actor.id, houseId);
+    return this.getHouseContext(await this.refreshActor(actor));
   }
 
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
+    const houseId = activeHouseId(actor);
     return this.items
-      .filter((item) => item.houseId === actor.houseId && (!status || item.status === status))
+      .filter((item) => item.houseId === houseId && (!status || item.status === status))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .map(cloneCase);
+      .map((item) => this.viewCase(actor, item));
+  }
+
+  async getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto> {
+    if (!['dispatcher', 'authority', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Сводка доступна УК и уполномоченным органам');
+    }
+    const houseId = activeHouseId(actor);
+    return makeHouseReport(houseId, this.houses.get(houseId)?.address ?? DEMO_ADDRESS,
+      this.items.filter((item) => item.houseId === houseId));
   }
 
   async getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
     const item = this.getMutable(actor, caseId);
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async findDuplicates(
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
   ): Promise<CaseDto[]> {
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
+    const houseId = activeHouseId(actor);
     return this.items
       .filter(
         (item) =>
-          item.houseId === actor.houseId &&
+          item.houseId === houseId &&
           openCaseStatuses.includes(item.status) &&
           item.category === input.category &&
           (!input.entrance || !item.entrance || item.entrance === input.entrance),
@@ -215,7 +377,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       .filter(({ score }) => score >= 0.2)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
-      .map(({ item }) => cloneCase(item));
+      .map(({ item }) => this.viewCase(actor, item));
   }
 
   async createCase(
@@ -224,6 +386,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     idempotencyKey: string,
   ): Promise<CaseDto> {
     ensureResidentOrAdmin(actor);
+    const houseId = activeHouseId(actor);
     if (input.duplicateCaseId) {
       return this.confirmCase(actor, input.duplicateCaseId);
     }
@@ -236,7 +399,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     const item: CaseDto = {
       id: randomUUID(),
       number: Math.max(...this.items.map((candidate) => candidate.number)) + 1,
-      houseId: actor.houseId,
+      houseId,
       title: input.title,
       description: input.description,
       category: input.category,
@@ -245,6 +408,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       status: 'registered',
       confirmationsCount: 1,
       watchersCount: 1,
+      isWatched: true,
       responsibleOrganization: routeResponsibleOrganization(input.category),
       version: 1,
       isDemo: true,
@@ -265,7 +429,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     this.idempotencyKeys.set(idempotencyScope, item.id);
     this.confirmations.add(`${item.id}:${actor.id}`);
     this.watchers.add(`${item.id}:${actor.id}`);
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async confirmCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -277,7 +441,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       item.confirmationsCount += 1;
       item.updatedAt = new Date().toISOString();
     }
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async watchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -288,7 +452,17 @@ export class InMemoryCaseRepository implements CaseRepository {
       item.watchersCount += 1;
       item.updatedAt = new Date().toISOString();
     }
-    return cloneCase(item);
+    return this.viewCase(actor, item);
+  }
+
+  async unwatchCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
+    const item = this.getMutable(actor, caseId);
+    const key = `${caseId}:${actor.id}`;
+    if (this.watchers.delete(key)) {
+      item.watchersCount -= 1;
+      item.updatedAt = new Date().toISOString();
+    }
+    return this.viewCase(actor, item);
   }
 
   async transitionCase(
@@ -301,12 +475,28 @@ export class InMemoryCaseRepository implements CaseRepository {
       throw new ConflictError('Карточка уже изменилась. Обновите данные и повторите действие.');
     }
     assertTransitionAllowed(item.status, input.status, actor.role);
+    if (input.status === 'assigned' && !input.assignee?.trim()) {
+      throw new ConflictError('Укажите исполнителя при назначении');
+    }
+    if (input.plannedCompletionAt && !['dispatcher', 'executor', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Плановую дату указывает диспетчер или исполнитель');
+    }
+    if (input.plannedCompletionAt && !['assigned', 'in_progress'].includes(input.status)) {
+      throw new ConflictError('Плановая дата доступна при назначении или начале работ');
+    }
+    if (input.plannedCompletionAt && new Date(input.plannedCompletionAt).getTime() <= Date.now()) {
+      throw new ConflictError('Плановая дата должна быть в будущем');
+    }
 
     const previous = item.status;
     item.status = input.status;
     item.version += 1;
     item.updatedAt = new Date().toISOString();
     if (input.assignee) item.assignee = input.assignee;
+    if (input.plannedCompletionAt) item.plannedCompletionAt = input.plannedCompletionAt;
+    if (['awaiting_resident_verification', 'resolved', 'disputed'].includes(input.status)) {
+      delete item.plannedCompletionAt;
+    }
     if (input.comment && input.status === 'awaiting_resident_verification') {
       item.resultComment = input.comment;
     }
@@ -315,10 +505,13 @@ export class InMemoryCaseRepository implements CaseRepository {
       fromStatus: previous,
       toStatus: input.status,
       actorName: actor.displayName,
-      ...(input.comment ? { comment: input.comment } : {}),
+      ...((input.assignee || input.comment) ? {
+        comment: [input.assignee ? 'Исполнитель: ' + input.assignee : '', input.comment].filter(Boolean).join(' · '),
+      } : {}),
+      ...(input.plannedCompletionAt ? { plannedCompletionAt: input.plannedCompletionAt } : {}),
       createdAt: item.updatedAt,
     });
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async addAttachment(
@@ -339,7 +532,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       createdAt: new Date().toISOString(),
     });
     item.updatedAt = new Date().toISOString();
-    return cloneCase(item);
+    return this.viewCase(actor, item);
   }
 
   async saveWebhookEvent(eventId: string): Promise<boolean> {
@@ -349,11 +542,20 @@ export class InMemoryCaseRepository implements CaseRepository {
   }
 
   private getMutable(actor: AuthenticatedActor, caseId: string): CaseDto {
+    const houseId = activeHouseId(actor);
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const item = this.items.find((candidate) => candidate.id === caseId);
-    if (!item || item.houseId !== actor.houseId) {
+    if (!item || item.houseId !== houseId) {
       throw new NotFoundError('Дело не найдено');
     }
     return item;
+  }
+
+  private viewCase(actor: AuthenticatedActor, item: CaseDto): CaseDto {
+    return {
+      ...structuredClone(item),
+      isWatched: this.watchers.has(`${item.id}:${actor.id}`),
+    };
   }
 }
 

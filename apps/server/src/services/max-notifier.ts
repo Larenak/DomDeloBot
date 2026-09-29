@@ -18,7 +18,7 @@ export interface BotNotifier {
   answerCallback(callbackId: string, message?: string): Promise<void>;
 }
 
-const pollingUpdateTypes: UpdateType[] = ['bot_started', 'message_created', 'message_callback'];
+export const maxUpdateTypes: UpdateType[] = ['bot_started', 'message_created', 'message_callback'];
 
 type PollingErrorHandler = (error: unknown, update?: Update) => void;
 
@@ -69,6 +69,17 @@ export class MaxNotifier implements BotNotifier {
     await this.bot.api.answerOnCallback(callbackId, message ? { message: { text: message } } : {});
   }
 
+  async registerWebhook(url: string, secret: string): Promise<BotInfo> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+
+    const botInfo = await this.bot.api.getMyInfo();
+    const result = await this.bot.api.subscribe(url, secret, maxUpdateTypes);
+    if (!result.success) {
+      throw new Error(`MAX не зарегистрировал webhook: ${result.message}`);
+    }
+    return botInfo;
+  }
+
   async startPolling(
     handleUpdate: (update: Update) => Promise<void>,
     handleError: PollingErrorHandler,
@@ -77,7 +88,7 @@ export class MaxNotifier implements BotNotifier {
     if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
     if (this.pollingStarted) throw new Error('MAX Long Polling уже запущен');
 
-    this.bot.on(pollingUpdateTypes, async (context) => handleUpdate(context.update));
+    this.bot.on(maxUpdateTypes, async (context) => handleUpdate(context.update));
     this.bot.catch((error, context) => handleError(error, context.update));
 
     const botInfo = await this.bot.api.getMyInfo();
@@ -94,7 +105,7 @@ export class MaxNotifier implements BotNotifier {
 
     this.pollingStarted = true;
     void this.bot
-      .startPolling({ allowedUpdates: pollingUpdateTypes, retry: true })
+      .startPolling({ allowedUpdates: maxUpdateTypes, retry: true })
       .catch((error) => handleError(error));
     return botInfo;
   }

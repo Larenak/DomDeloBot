@@ -51,6 +51,20 @@ checks:
     expected_statuses: [200, 401, 503]
     expected_fields: [token, actor]
   - method: GET
+    path: /api/me/houses
+    auth: max_session_or_demo
+    expected_status: 200
+    expected_fields: [houses, activeHouseId, onboardingRequired]
+  - method: POST
+    path: /api/me/houses
+    auth: max_session_or_demo
+    body_fields: [city, street, building]
+    expected_statuses: [200, 400]
+  - method: POST
+    path: /api/me/houses/{houseId}/select
+    auth: favorite_house_member
+    expected_statuses: [200, 403]
+  - method: GET
     path: /api/cases
     auth: resident_or_staff
     query_fields: [status]
@@ -96,4 +110,3 @@ checks:
     auth: X-Max-Bot-Api-Secret
     expected_statuses: [200, 401]
     idempotency: "update_type + message.body.mid, fallback SHA-256 payload"
-

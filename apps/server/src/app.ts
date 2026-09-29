@@ -1,17 +1,22 @@
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import type { AppConfig } from '@domdelo/config';
 import Fastify from 'fastify';
+import { fileURLToPath } from 'node:url';
 
 import { createDatabase } from './db/client.js';
 import { registerAuth } from './modules/auth/plugin.js';
 import { registerCaseRoutes } from './modules/cases/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { registerHouseRoutes } from './modules/houses/routes.js';
+import { registerPollRoutes } from './modules/polls/routes.js';
 import { startOutboxWorker } from './modules/outbox/worker.js';
 import { registerWebhookRoutes } from './modules/webhook/routes.js';
 import {
+  AddressOnboardingRequiredError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -19,19 +24,26 @@ import {
 } from './repositories/case-repository.js';
 import { InMemoryCaseRepository } from './repositories/in-memory-case-repository.js';
 import { PostgresCaseRepository } from './repositories/postgres-case-repository.js';
+import { InMemoryPollRepository } from './repositories/in-memory-poll-repository.js';
+import { PostgresPollRepository } from './repositories/postgres-poll-repository.js';
+import type { PollRepository } from './repositories/poll-repository.js';
 import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
 import {
   InMemoryObjectStorage,
+  PostgresObjectStorage,
   S3ObjectStorage,
   type ObjectStorage,
 } from './services/object-storage.js';
+import { AddressProviderUnavailableError, DadataAddressProvider, DemoAddressProvider, type AddressProvider } from './services/address-provider.js';
 import './types.js';
 
 type BuildAppOptions = {
   config: AppConfig;
   caseRepository?: CaseRepository;
+  pollRepository?: PollRepository;
   objectStorage?: ObjectStorage;
   notifier?: BotNotifier;
+  addressProvider?: AddressProvider;
 };
 
 export async function buildApp(options: BuildAppOptions) {
@@ -42,11 +54,15 @@ export async function buildApp(options: BuildAppOptions) {
   });
   app.decorate('config', options.config);
 
-  const objectStorage =
-    options.objectStorage ||
-    (options.config.storageMode === 'memory'
+  const needsDatabase = options.config.storageMode === 'postgres';
+  const database = needsDatabase ? createDatabase(options.config) : undefined;
+  const objectStorage: ObjectStorage = options.objectStorage || (
+    options.config.objectStorageMode === 'memory'
       ? new InMemoryObjectStorage()
-      : new S3ObjectStorage(options.config));
+      : options.config.objectStorageMode === 'postgres'
+        ? new PostgresObjectStorage(database!.db, options.config.sessionSecret)
+        : new S3ObjectStorage(options.config)
+  );
   app.decorate('objectStorage', objectStorage);
 
   const notifier = options.notifier || new MaxNotifier(options.config.maxBotToken, options.config.maxApiBaseUrl);
@@ -57,12 +73,22 @@ export async function buildApp(options: BuildAppOptions) {
   } else if (options.config.storageMode === 'memory') {
     app.decorate('caseRepository', new InMemoryCaseRepository());
   } else {
-    const { client, db } = createDatabase(options.config);
-    app.decorate('caseRepository', new PostgresCaseRepository(db, objectStorage));
-    stopOutboxWorker = startOutboxWorker(db, notifier, app.log);
+    app.decorate('caseRepository', new PostgresCaseRepository(
+      database!.db,
+      objectStorage,
+      options.config.demoMode,
+    ));
+    stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
+  }
+  app.decorate('pollRepository', options.pollRepository || (
+    options.config.storageMode === 'memory'
+      ? new InMemoryPollRepository()
+      : new PostgresPollRepository(database!.db, options.config.demoMode)
+  ));
+  if (database) {
     app.addHook('onClose', async () => {
       stopOutboxWorker?.();
-      await client.end();
+      await database.client.end();
     });
   }
 
@@ -84,7 +110,9 @@ export async function buildApp(options: BuildAppOptions) {
       servers: [{ url: options.config.publicBaseUrl }],
       tags: [
         { name: 'auth' },
+        { name: 'houses' },
         { name: 'cases' },
+        { name: 'polls' },
         { name: 'case-workflow' },
         { name: 'attachments' },
         { name: 'MAX webhook' },
@@ -102,15 +130,36 @@ export async function buildApp(options: BuildAppOptions) {
 
   await registerAuth(app);
   await registerHealthRoutes(app);
+  await registerHouseRoutes(app, options.addressProvider || (options.config.demoMode && !options.config.dadataApiKey ? new DemoAddressProvider() : new DadataAddressProvider(options.config.dadataApiKey)));
   await registerCaseRoutes(app);
+  await registerPollRoutes(app);
   await registerWebhookRoutes(app, notifier);
 
   if (objectStorage.get) {
     app.get('/api/files/:key', async (request, reply) => {
       const { key } = request.params as { key: string };
-      const found = await objectStorage.get!(decodeURIComponent(key));
+      const query = request.query as { expires?: string; signature?: string };
+      const found = await objectStorage.get!(decodeURIComponent(key), query);
       if (!found) return reply.code(404).send({ error: 'not_found', message: 'Файл не найден' });
       return reply.type(found.contentType).send(found.body);
+    });
+  }
+
+  if (options.config.serveWeb) {
+    await app.register(fastifyStatic, {
+      root: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
+      wildcard: false,
+    });
+    app.setNotFoundHandler((request, reply) => {
+      const pathname = new URL(request.url, 'http://localhost').pathname;
+      if (
+        request.method === 'GET' &&
+        request.headers.accept?.includes('text/html') &&
+        !/^\/(api|health|docs|webhooks)(\/|$)/u.test(pathname)
+      ) {
+        return reply.sendFile('index.html');
+      }
+      return reply.code(404).send({ error: 'not_found', message: 'Страница не найдена' });
     });
   }
 
@@ -119,6 +168,17 @@ export async function buildApp(options: BuildAppOptions) {
     const requestId = request.id;
     if (error instanceof NotFoundError) {
       return reply.code(404).send({ error: 'not_found', message: error.message, requestId });
+    }
+    if (error instanceof AddressProviderUnavailableError) {
+      request.log.error({ error }, 'address provider unavailable');
+      return reply.code(503).send({ error: 'address_provider_unavailable', message: error.message, requestId });
+    }
+    if (error instanceof AddressOnboardingRequiredError) {
+      return reply.code(403).send({
+        error: 'address_required',
+        message: error.message,
+        requestId,
+      });
     }
     if (error instanceof ForbiddenError || typedError.name === 'WorkflowError') {
       return reply.code(403).send({ error: 'forbidden', message: typedError.message, requestId });

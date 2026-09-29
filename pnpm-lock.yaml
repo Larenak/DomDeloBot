@@ -31,6 +31,9 @@ importers:
       '@fastify/multipart':
         specifier: 10.1.2
         version: 10.1.2
+      '@fastify/static':
+        specifier: 10.1.4
+        version: 10.1.4
       '@fastify/swagger':
         specifier: 9.9.0
         version: 9.9.0

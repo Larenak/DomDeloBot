@@ -15,6 +15,11 @@ components:
       name: X-Demo-User
   schemas: {}
 paths:
+  /api/public-config:
+    get:
+      responses:
+        "200":
+          description: Default Response
   /api/auth/max:
     post:
       tags:
@@ -53,6 +58,582 @@ paths:
       responses:
         "200":
           description: Default Response
+  /api/addresses/suggest:
+    get:
+      tags:
+        - houses
+      parameters:
+        - schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+          in: query
+          name: q
+          required: true
+      security: &a1
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - value
+                    - isHouse
+                  properties:
+                    value:
+                      type: string
+                    isHouse:
+                      type: boolean
+                    fiasId:
+                      format: uuid
+                      type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/me/houses:
+    get:
+      tags:
+        - houses
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                  - accessPending
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  activeRole:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - resident
+                      - type: string
+                        enum:
+                          - owner
+                      - type: string
+                        enum:
+                          - tenant
+                      - type: string
+                        enum:
+                          - chair
+                      - type: string
+                        enum:
+                          - dispatcher
+                      - type: string
+                        enum:
+                          - executor
+                      - type: string
+                        enum:
+                          - authority
+                      - type: string
+                        enum:
+                          - admin
+                  onboardingRequired:
+                    type: boolean
+                  accessPending:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+    post:
+      tags:
+        - houses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fiasId
+              properties:
+                fiasId:
+                  format: uuid
+                  type: string
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                  - accessPending
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  activeRole:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - resident
+                      - type: string
+                        enum:
+                          - owner
+                      - type: string
+                        enum:
+                          - tenant
+                      - type: string
+                        enum:
+                          - chair
+                      - type: string
+                        enum:
+                          - dispatcher
+                      - type: string
+                        enum:
+                          - executor
+                      - type: string
+                        enum:
+                          - authority
+                      - type: string
+                        enum:
+                          - admin
+                  onboardingRequired:
+                    type: boolean
+                  accessPending:
+                    type: boolean
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/me/houses/demo:
+    post:
+      tags:
+        - houses
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                  - accessPending
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  activeRole:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - resident
+                      - type: string
+                        enum:
+                          - owner
+                      - type: string
+                        enum:
+                          - tenant
+                      - type: string
+                        enum:
+                          - chair
+                      - type: string
+                        enum:
+                          - dispatcher
+                      - type: string
+                        enum:
+                          - executor
+                      - type: string
+                        enum:
+                          - authority
+                      - type: string
+                        enum:
+                          - admin
+                  onboardingRequired:
+                    type: boolean
+                  accessPending:
+                    type: boolean
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/me/houses/{houseId}/select:
+    post:
+      tags:
+        - houses
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: houseId
+          required: true
+      security: *a1
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houses
+                  - onboardingRequired
+                  - accessPending
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - address
+                        - isActive
+                        - isDemo
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        address:
+                          type: string
+                        isActive:
+                          type: boolean
+                        isDemo:
+                          type: boolean
+                  activeHouseId:
+                    format: uuid
+                    type: string
+                  activeRole:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - resident
+                      - type: string
+                        enum:
+                          - owner
+                      - type: string
+                        enum:
+                          - tenant
+                      - type: string
+                        enum:
+                          - chair
+                      - type: string
+                        enum:
+                          - dispatcher
+                      - type: string
+                        enum:
+                          - executor
+                      - type: string
+                        enum:
+                          - authority
+                      - type: string
+                        enum:
+                          - admin
+                  onboardingRequired:
+                    type: boolean
+                  accessPending:
+                    type: boolean
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/reports/house:
+    get:
+      tags:
+        - reports
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - houseId
+                  - address
+                  - asOf
+                  - totalCases
+                  - openCases
+                  - overdueForecasts
+                  - manyConfirmed
+                  - categories
+                  - source
+                properties:
+                  houseId:
+                    format: uuid
+                    type: string
+                  address:
+                    type: string
+                  asOf:
+                    format: date-time
+                    type: string
+                  totalCases:
+                    minimum: 0
+                    type: integer
+                  openCases:
+                    minimum: 0
+                    type: integer
+                  overdueForecasts:
+                    minimum: 0
+                    type: integer
+                  manyConfirmed:
+                    minimum: 0
+                    type: integer
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - category
+                        - cases
+                        - confirmations
+                      properties:
+                        category:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - lighting
+                            - type: string
+                              enum:
+                                - entrance
+                            - type: string
+                              enum:
+                                - elevator
+                            - type: string
+                              enum:
+                                - water
+                            - type: string
+                              enum:
+                                - heating
+                            - type: string
+                              enum:
+                                - yard
+                            - type: string
+                              enum:
+                                - other
+                        cases:
+                          minimum: 0
+                          type: integer
+                        confirmations:
+                          minimum: 0
+                          type: integer
+                  source:
+                    type: string
+                    enum:
+                      - domdelo_internal
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
   /api/cases:
     get:
       tags:
@@ -107,6 +688,7 @@ paths:
                     - status
                     - confirmationsCount
                     - watchersCount
+                    - isWatched
                     - responsibleOrganization
                     - version
                     - isDemo
@@ -184,11 +766,16 @@ paths:
                     watchersCount:
                       minimum: 0
                       type: integer
+                    isWatched:
+                      type: boolean
                     responsibleOrganization:
                       type: string
                     assignee:
                       type: string
                     resultComment:
+                      type: string
+                    plannedCompletionAt:
+                      format: date-time
                       type: string
                     version:
                       minimum: 1
@@ -263,6 +850,9 @@ paths:
                           comment:
                             type: string
                           actorName:
+                            type: string
+                          plannedCompletionAt:
+                            format: date-time
                             type: string
                           createdAt:
                             format: date-time
@@ -400,6 +990,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -477,11 +1068,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -556,6 +1152,9 @@ paths:
                         comment:
                           type: string
                         actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
                           type: string
                         createdAt:
                           format: date-time
@@ -656,6 +1255,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -733,11 +1333,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -812,6 +1417,9 @@ paths:
                         comment:
                           type: string
                         actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
                           type: string
                         createdAt:
                           format: date-time
@@ -936,6 +1544,7 @@ paths:
                     - status
                     - confirmationsCount
                     - watchersCount
+                    - isWatched
                     - responsibleOrganization
                     - version
                     - isDemo
@@ -1013,11 +1622,16 @@ paths:
                     watchersCount:
                       minimum: 0
                       type: integer
+                    isWatched:
+                      type: boolean
                     responsibleOrganization:
                       type: string
                     assignee:
                       type: string
                     resultComment:
+                      type: string
+                    plannedCompletionAt:
+                      format: date-time
                       type: string
                     version:
                       minimum: 1
@@ -1093,6 +1707,9 @@ paths:
                             type: string
                           actorName:
                             type: string
+                          plannedCompletionAt:
+                            format: date-time
+                            type: string
                           createdAt:
                             format: date-time
                             type: string
@@ -1160,6 +1777,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -1237,11 +1855,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -1316,6 +1939,9 @@ paths:
                         comment:
                           type: string
                         actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
                           type: string
                         createdAt:
                           format: date-time
@@ -1384,6 +2010,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -1461,11 +2088,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -1540,6 +2172,241 @@ paths:
                         comment:
                           type: string
                         actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+                  attachments:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - kind
+                        - url
+                        - fileName
+                        - mimeType
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        kind:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - problem
+                            - type: string
+                              enum:
+                                - result
+                        url:
+                          type: string
+                        fileName:
+                          type: string
+                        mimeType:
+                          type: string
+                        createdAt:
+                          format: date-time
+                          type: string
+    delete:
+      tags:
+        - cases
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: caseId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - number
+                  - houseId
+                  - title
+                  - description
+                  - category
+                  - place
+                  - status
+                  - confirmationsCount
+                  - watchersCount
+                  - isWatched
+                  - responsibleOrganization
+                  - version
+                  - isDemo
+                  - createdAt
+                  - updatedAt
+                  - history
+                  - attachments
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  number:
+                    minimum: 1
+                    type: integer
+                  houseId:
+                    format: uuid
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  category:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - lighting
+                      - type: string
+                        enum:
+                          - entrance
+                      - type: string
+                        enum:
+                          - elevator
+                      - type: string
+                        enum:
+                          - water
+                      - type: string
+                        enum:
+                          - heating
+                      - type: string
+                        enum:
+                          - yard
+                      - type: string
+                        enum:
+                          - other
+                  entrance:
+                    type: string
+                  place:
+                    type: string
+                  status:
+                    anyOf:
+                      - type: string
+                        enum:
+                          - draft
+                      - type: string
+                        enum:
+                          - registered
+                      - type: string
+                        enum:
+                          - assigned
+                      - type: string
+                        enum:
+                          - in_progress
+                      - type: string
+                        enum:
+                          - awaiting_resident_verification
+                      - type: string
+                        enum:
+                          - resolved
+                      - type: string
+                        enum:
+                          - disputed
+                  confirmationsCount:
+                    minimum: 1
+                    type: integer
+                  watchersCount:
+                    minimum: 0
+                    type: integer
+                  isWatched:
+                    type: boolean
+                  responsibleOrganization:
+                    type: string
+                  assignee:
+                    type: string
+                  resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
+                    type: string
+                  version:
+                    minimum: 1
+                    type: integer
+                  isDemo:
+                    type: boolean
+                  createdAt:
+                    format: date-time
+                    type: string
+                  updatedAt:
+                    format: date-time
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - toStatus
+                        - actorName
+                        - createdAt
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        fromStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        toStatus:
+                          anyOf:
+                            - type: string
+                              enum:
+                                - draft
+                            - type: string
+                              enum:
+                                - registered
+                            - type: string
+                              enum:
+                                - assigned
+                            - type: string
+                              enum:
+                                - in_progress
+                            - type: string
+                              enum:
+                                - awaiting_resident_verification
+                            - type: string
+                              enum:
+                                - resolved
+                            - type: string
+                              enum:
+                                - disputed
+                        comment:
+                          type: string
+                        actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
                           type: string
                         createdAt:
                           format: date-time
@@ -1622,6 +2489,9 @@ paths:
                 comment:
                   maxLength: 1000
                   type: string
+                plannedCompletionAt:
+                  format: date-time
+                  type: string
       parameters:
         - schema:
             type: string
@@ -1650,6 +2520,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -1727,11 +2598,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -1806,6 +2682,9 @@ paths:
                         comment:
                           type: string
                         actorName:
+                          type: string
+                        plannedCompletionAt:
+                          format: date-time
                           type: string
                         createdAt:
                           format: date-time
@@ -1898,6 +2777,7 @@ paths:
                   - status
                   - confirmationsCount
                   - watchersCount
+                  - isWatched
                   - responsibleOrganization
                   - version
                   - isDemo
@@ -1975,11 +2855,16 @@ paths:
                   watchersCount:
                     minimum: 0
                     type: integer
+                  isWatched:
+                    type: boolean
                   responsibleOrganization:
                     type: string
                   assignee:
                     type: string
                   resultComment:
+                    type: string
+                  plannedCompletionAt:
+                    format: date-time
                     type: string
                   version:
                     minimum: 1
@@ -2055,6 +2940,9 @@ paths:
                           type: string
                         actorName:
                           type: string
+                        plannedCompletionAt:
+                          format: date-time
+                          type: string
                         createdAt:
                           format: date-time
                           type: string
@@ -2106,6 +2994,22 @@ paths:
                     type: string
                   requestId:
                     type: string
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
         "413":
           description: Default Response
           content:
@@ -2123,6 +3027,289 @@ paths:
                   requestId:
                     type: string
         "415":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/polls:
+    get:
+      tags:
+        - polls
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - id
+                    - houseId
+                    - question
+                    - options
+                    - closesAt
+                    - createdAt
+                    - totalVotes
+                    - isDemo
+                  properties:
+                    id:
+                      format: uuid
+                      type: string
+                    houseId:
+                      format: uuid
+                      type: string
+                    question:
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - label
+                          - votes
+                        properties:
+                          id:
+                            format: uuid
+                            type: string
+                          label:
+                            type: string
+                          votes:
+                            minimum: 0
+                            type: integer
+                    closesAt:
+                      format: date-time
+                      type: string
+                    createdAt:
+                      format: date-time
+                      type: string
+                    totalVotes:
+                      minimum: 0
+                      type: integer
+                    myOptionId:
+                      format: uuid
+                      type: string
+                    isDemo:
+                      type: boolean
+    post:
+      tags:
+        - polls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question
+                - options
+                - closesAt
+              properties:
+                question:
+                  minLength: 10
+                  maxLength: 300
+                  type: string
+                options:
+                  minItems: 2
+                  maxItems: 6
+                  type: array
+                  items:
+                    minLength: 1
+                    maxLength: 120
+                    type: string
+                closesAt:
+                  format: date-time
+                  type: string
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "201":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - houseId
+                  - question
+                  - options
+                  - closesAt
+                  - createdAt
+                  - totalVotes
+                  - isDemo
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  houseId:
+                    format: uuid
+                    type: string
+                  question:
+                    type: string
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - label
+                        - votes
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        label:
+                          type: string
+                        votes:
+                          minimum: 0
+                          type: integer
+                  closesAt:
+                    format: date-time
+                    type: string
+                  createdAt:
+                    format: date-time
+                    type: string
+                  totalVotes:
+                    minimum: 0
+                    type: integer
+                  myOptionId:
+                    format: uuid
+                    type: string
+                  isDemo:
+                    type: boolean
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+  /api/polls/{pollId}/votes:
+    post:
+      tags:
+        - polls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - optionId
+              properties:
+                optionId:
+                  format: uuid
+                  type: string
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: pollId
+          required: true
+      security:
+        - bearerAuth: []
+        - demoUser: []
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - houseId
+                  - question
+                  - options
+                  - closesAt
+                  - createdAt
+                  - totalVotes
+                  - isDemo
+                properties:
+                  id:
+                    format: uuid
+                    type: string
+                  houseId:
+                    format: uuid
+                    type: string
+                  question:
+                    type: string
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - label
+                        - votes
+                      properties:
+                        id:
+                          format: uuid
+                          type: string
+                        label:
+                          type: string
+                        votes:
+                          minimum: 0
+                          type: integer
+                  closesAt:
+                    format: date-time
+                    type: string
+                  createdAt:
+                    format: date-time
+                    type: string
+                  totalVotes:
+                    minimum: 0
+                    type: integer
+                  myOptionId:
+                    format: uuid
+                    type: string
+                  isDemo:
+                    type: boolean
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+        "409":
           description: Default Response
           content:
             application/json:
@@ -2199,7 +3386,9 @@ servers:
   - url: http://localhost:8080
 tags:
   - name: auth
+  - name: houses
   - name: cases
+  - name: polls
   - name: case-workflow
   - name: attachments
   - name: MAX webhook

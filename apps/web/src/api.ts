@@ -1,14 +1,47 @@
 import type {
+  AddHouseInput,
+  AddressSuggestionDto,
   CaseDto,
+  CreatePollInput,
+  HouseReportDto,
+  PollDto,
   CreateCaseInput,
   DuplicateSearchInput,
+  HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
 
 const DEMO_USER_KEY = 'domdelo.demoUser';
 const SESSION_KEY = 'domdelo.session';
+const ACTOR_KEY = 'domdelo.actor';
+const PUBLIC_DEMO_ROLE_KEY = 'domdelo.publicDemoRole';
 
-export type DemoUserKey = 'resident-1' | 'resident-2' | 'dispatcher-1' | 'executor-1';
+export type PublicDemoRole = 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority';
+export function getPublicDemoRole(): PublicDemoRole {
+  return (localStorage.getItem(PUBLIC_DEMO_ROLE_KEY) as PublicDemoRole | null) || 'resident';
+}
+export function setPublicDemoRole(role: PublicDemoRole): void {
+  localStorage.setItem(PUBLIC_DEMO_ROLE_KEY, role);
+}
+
+type SessionActor = { id: string; role: 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority' | 'admin'; houseId: string; displayName: string };
+
+export function getSessionActor(): SessionActor | null {
+  try {
+    const value = sessionStorage.getItem(ACTOR_KEY);
+    return value ? JSON.parse(value) as SessionActor : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getPublicConfig(): Promise<{ demoMode: boolean; demoHouseAvailable?: boolean }> {
+  const response = await fetch('/api/public-config');
+  if (!response.ok) throw new Error('Не удалось загрузить настройки приложения');
+  return response.json() as Promise<{ demoMode: boolean; demoHouseAvailable?: boolean }>;
+}
+
+export type DemoUserKey = 'resident-1' | 'resident-2' | 'owner-1' | 'tenant-1' | 'chair-1' | 'authority-1' | 'dispatcher-1' | 'executor-1';
 
 export function getDemoUser(): DemoUserKey {
   return (localStorage.getItem(DEMO_USER_KEY) as DemoUserKey | null) || 'resident-1';
@@ -27,8 +60,9 @@ export async function initializeMaxSession(): Promise<void> {
     body: JSON.stringify({ initData }),
   });
   if (!response.ok) throw await toApiError(response);
-  const result = (await response.json()) as { token: string };
+  const result = (await response.json()) as { token: string; actor: SessionActor };
   sessionStorage.setItem(SESSION_KEY, result.token);
+  sessionStorage.setItem(ACTOR_KEY, JSON.stringify(result.actor));
 }
 
 function requestHeaders(extra?: HeadersInit): Headers {
@@ -36,6 +70,7 @@ function requestHeaders(extra?: HeadersInit): Headers {
   const token = sessionStorage.getItem(SESSION_KEY);
   if (token) headers.set('authorization', `Bearer ${token}`);
   else headers.set('x-demo-user', getDemoUser());
+  headers.set('x-demo-role', getPublicDemoRole());
   return headers;
 }
 
@@ -87,6 +122,7 @@ export const caseApi = {
     }),
   confirm: (id: string) => api<CaseDto>(`/api/cases/${id}/confirmations`, { method: 'POST' }),
   watch: (id: string) => api<CaseDto>(`/api/cases/${id}/watchers`, { method: 'POST' }),
+  unwatch: (id: string) => api<CaseDto>(`/api/cases/${id}/watchers`, { method: 'DELETE' }),
   transition: (id: string, input: TransitionCaseInput) =>
     api<CaseDto>(`/api/cases/${id}/status`, {
       method: 'PATCH',
@@ -101,4 +137,35 @@ export const caseApi = {
       body,
     });
   },
+};
+
+export const houseApi = {
+  context: () => api<HouseContextDto>('/api/me/houses'),
+  suggest: (query: string, signal?: AbortSignal) =>
+    api<AddressSuggestionDto[]>(`/api/addresses/suggest?q=${encodeURIComponent(query)}`, signal ? { signal } : undefined),
+  add: (input: AddHouseInput) =>
+    api<HouseContextDto>('/api/me/houses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  select: (houseId: string) =>
+    api<HouseContextDto>(`/api/me/houses/${houseId}/select`, { method: 'POST' }),
+  joinDemo: () => api<HouseContextDto>('/api/me/houses/demo', { method: 'POST' }),
+};
+export const pollApi = {
+  list: () => api<PollDto[]>('/api/polls'),
+  create: (input: CreatePollInput) => api<PollDto>('/api/polls', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  }),
+  vote: (pollId: string, optionId: string) => api<PollDto>('/api/polls/' + pollId + '/votes', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ optionId }),
+  }),
+};
+export const reportApi = {
+  house: () => api<HouseReportDto>('/api/reports/house'),
 };

@@ -15,9 +15,9 @@ export default defineConfig({
       '.localhost.run',
     ],
     proxy: {
-      '/api': 'http://localhost:3000',
-      '/health': 'http://localhost:3000',
-      '/webhooks': 'http://localhost:3000',
+      '/api': process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
+      '/health': process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
+      '/webhooks': process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
     },
   },
   build: {

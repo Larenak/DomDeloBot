@@ -15,6 +15,34 @@
       "when": 1790174520910,
       "tag": "0001_slippery_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790339035218,
+      "tag": "0002_hard_doctor_faustus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790358061848,
+      "tag": "0003_rainy_triton",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790499705466,
+      "tag": "0004_thankful_vivisector",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790617966697,
+      "tag": "0005_classy_mathemanic",
+      "breakpoints": true
     }
   ]
 }

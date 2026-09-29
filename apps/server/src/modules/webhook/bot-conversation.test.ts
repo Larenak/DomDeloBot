@@ -2,6 +2,7 @@ import { loadConfig } from '@domdelo/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildApp } from '../../app.js';
+import { demoActors } from '../../repositories/in-memory-case-repository.js';
 import type { BotMessageOptions, BotNotifier } from '../../services/max-notifier.js';
 import { parseCaseDescription } from './bot-conversation.js';
 
@@ -35,6 +36,21 @@ class RecordingNotifier implements BotNotifier {
 
 const openedApps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
 
+async function addMaxHouse(
+  app: Awaited<ReturnType<typeof buildApp>>,
+  maxUserId: bigint,
+  displayName: string,
+) {
+  const actor = await app.caseRepository.resolveMaxUser({ maxUserId, displayName });
+  await app.caseRepository.addHouse(actor, {
+    fiasId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    address: 'г. Казань, ул. Спортивная, д. 12',
+    city: 'Казань',
+    street: 'Спортивная',
+    building: '12',
+  });
+}
+
 afterEach(async () => {
   await Promise.all(openedApps.splice(0).map((app) => app.close()));
   vi.unstubAllGlobals();
@@ -51,10 +67,37 @@ describe('MAX bot conversation', () => {
     });
   });
 
+  it('asks a new MAX user to add an address before creating cases', async () => {
+    const notifier = new RecordingNotifier();
+    const app = await buildApp({ config, notifier });
+    openedApps.push(app);
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhooks/max',
+      headers: { 'x-max-bot-api-secret': 'test-webhook-secret' },
+      payload: {
+        update_type: 'bot_started',
+        timestamp: 1,
+        chat_id: 900,
+        user: { user_id: 900, first_name: 'Новый жилец' },
+      },
+    });
+
+    await expect.poll(() => notifier.messages.length).toBe(1);
+    expect(notifier.messages[0]?.text).toContain('Сначала добавьте адрес дома');
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'open_app',
+      text: 'Открыть ДомДело',
+      web_app: 'domdelo_bot',
+    });
+  });
+
   it('starts a guided case flow for a bot_started update', async () => {
     const notifier = new RecordingNotifier();
     const app = await buildApp({ config, notifier });
     openedApps.push(app);
+    await addMaxHouse(app, 42n, 'Анна');
 
     const webhook = (payload: object) =>
       app.inject({
@@ -119,6 +162,7 @@ describe('MAX bot conversation', () => {
     });
     const app = await buildApp({ config: localConfig, notifier });
     openedApps.push(app);
+    await addMaxHouse(app, 42n, 'Анна');
 
     await app.inject({
       method: 'POST',
@@ -204,6 +248,7 @@ describe('MAX bot conversation', () => {
     const notifier = new RecordingNotifier();
     const app = await buildApp({ config, notifier });
     openedApps.push(app);
+    await addMaxHouse(app, 84n, 'Михаил');
     const webhook = (payload: object) =>
       app.inject({
         method: 'POST',
@@ -262,6 +307,11 @@ describe('MAX bot conversation', () => {
       payload: 'case_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
 
+    await app.caseRepository.addHouse(demoActors['resident-1']!, {
+      fiasId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+      address: 'г. Казань, ул. Спортивная, д. 12',
+      city: 'Казань', street: 'Спортивная', building: '12',
+    });
     const caseResponse = await app.inject({
       method: 'GET',
       url: '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
