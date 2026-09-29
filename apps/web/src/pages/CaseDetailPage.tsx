@@ -1,19 +1,19 @@
-import { caseStatusLabels, getAvailableTransitions } from '@domdelo/domain';
+import { caseStatusLabels, getAvailableTransitions, type UserRole } from '@domdelo/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChangeEvent, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
-import { caseApi, getDemoUser } from '../api.js';
+import { caseApi } from '../api.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 import { PhotoGallery } from '../components/PhotoGallery.js';
-import { formatRelativeDate, statusTone } from '../format.js';
+import { formatDateTime, formatRelativeDate, statusTone } from '../format.js';
 
 const actionLabels = {
   resolved: 'Подтверждаю устранение',
   disputed: 'Проблема осталась',
 } as const;
 
-export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
+export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: UserRole }) {
   const { caseId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -40,11 +40,7 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
     onSuccess: invalidate,
   });
 
-  const role = getDemoUser().startsWith('dispatcher')
-    ? 'dispatcher'
-    : getDemoUser().startsWith('executor')
-      ? 'executor'
-      : 'resident';
+  const isResidentRole = ['resident', 'owner', 'tenant', 'chair'].includes(role);
 
   const onFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -62,7 +58,7 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
 
   return (
     <main className="page page--detail">
-      <Link className="back-link" to={role === 'resident' ? '/' : '/dispatcher'}>← Назад к списку</Link>
+      <Link className="back-link" to={isResidentRole ? '/' : '/dispatcher'}>← Назад к списку</Link>
       {searchParams.get('created') ? (
         <div className="success-banner">✓ Дело зарегистрировано. Соседи уже могут присоединиться.</div>
       ) : null}
@@ -84,15 +80,17 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
         <p className="detail-description">{item.description}</p>
         <div className="detail-grid">
           <div><span>Место</span><strong>{item.place}{item.entrance ? `, подъезд ${item.entrance}` : ''}</strong></div>
-          <div><span>Ответственный</span><strong>{item.responsibleOrganization}</strong></div>
+          <div><span>Предполагаемый адресат</span><strong>{item.responsibleOrganization}</strong></div>
           {item.assignee ? <div><span>Исполнитель</span><strong>{item.assignee}</strong></div> : null}
+          <div><span>Плановая дата от диспетчера</span><strong>{item.plannedCompletionAt ? formatDateTime(item.plannedCompletionAt) : 'Пока не указана'}</strong></div>
           <div><span>Обновлено</span><strong>{formatRelativeDate(item.updatedAt)}</strong></div>
         </div>
         <div className="collective-stats">
           <div><strong>{item.confirmationsCount}</strong><span>подтвердили</span></div>
           <div><strong>{item.watchersCount}</strong><span>следят</span></div>
         </div>
-        {role === 'resident' ? (
+        {isResidentRole ? <Link className="button button--secondary" to={`/cases/${item.id}/complaint`}>Составить обращение</Link> : null}
+        {isResidentRole ? (
           <div className="action-row">
             <button
               className="button button--primary"
@@ -118,20 +116,20 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
           <div><h2>Фотографии</h2><p>Доказательства проблемы и результата</p></div>
         </div>
         {item.attachments.length ? <PhotoGallery attachments={item.attachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
-        <div className="upload-row">
+        {(demoMode || !item.isDemo) ? <div className="upload-row">
           <select value={uploadKind} onChange={(event) => setUploadKind(event.target.value as 'problem' | 'result')}>
             <option value="problem">Фото проблемы</option>
-            {role !== 'resident' ? <option value="result">Фото результата</option> : null}
+            {['dispatcher', 'executor', 'admin'].includes(role) ? <option value="result">Фото результата</option> : null}
           </select>
           <label className="button button--secondary file-button">
             {upload.isPending ? 'Загружаем…' : 'Добавить фото'}
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} disabled={upload.isPending} />
           </label>
-        </div>
+        </div> : <p className="muted-box">Загрузка фото в открытом демонстрационном доме отключена.</p>}
         {upload.isError ? <p className="form-error">{upload.error.message}</p> : null}
       </section>
 
-      {role === 'resident' && residentTransitions.length > 0 ? (
+      {isResidentRole && residentTransitions.length > 0 ? (
         <section className="verification-card">
           <span className="verification-card__icon">✓</span>
           <div>
@@ -156,7 +154,7 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
 
       <section className="content-card">
         <div className="section-heading section-heading--inside">
-          <div><h2>История дела</h2><p>Все значимые изменения</p></div>
+          <div><h2>История дела</h2><p>Этапы внутри ДомДела; это не статус заявки в ГИС ЖКХ</p></div>
         </div>
         <ol className="timeline">
           {[...item.history].reverse().map((historyItem) => (
@@ -165,7 +163,8 @@ export function CaseDetailPage({ demoMode }: { demoMode: boolean }) {
               <div>
                 <strong>{caseStatusLabels[historyItem.toStatus]}</strong>
                 {historyItem.comment ? <p>{historyItem.comment}</p> : null}
-                <span>{historyItem.actorName} · {formatRelativeDate(historyItem.createdAt)}</span>
+                {historyItem.plannedCompletionAt ? <p>Плановая дата: {formatDateTime(historyItem.plannedCompletionAt)}</p> : null}
+                <span>{historyItem.actorName} · {formatDateTime(historyItem.createdAt)}</span>
               </div>
             </li>
           ))}

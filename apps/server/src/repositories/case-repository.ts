@@ -1,5 +1,6 @@
 import type {
   CaseDto,
+  HouseReportDto,
   CreateCaseInput,
   DuplicateSearchInput,
   HouseContextDto,
@@ -34,8 +35,10 @@ export interface CaseRepository {
   }): Promise<AuthenticatedActor>;
   getHouseContext(actor: AuthenticatedActor): Promise<HouseContextDto>;
   addHouse(actor: AuthenticatedActor, input: VerifiedHouse): Promise<HouseContextDto>;
+  joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto>;
   listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]>;
+  getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto>;
   getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
   findDuplicates(actor: AuthenticatedActor, input: DuplicateSearchInput): Promise<CaseDto[]>;
   createCase(

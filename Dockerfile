@@ -44,4 +44,4 @@ EXPOSE 8080
 FROM server AS hosted
 COPY --from=build --chown=node:node /workspace/apps/web/dist ./apps/web/dist
 ENV SERVE_WEB=true
-CMD ["sh", "-c", "node apps/server/dist/db/migrate.js && node apps/server/dist/db/seed-hackathon-house.js && node apps/server/dist/index.js"]
+CMD ["sh", "-c", "node apps/server/dist/db/migrate.js && node apps/server/dist/db/seed-hackathon-house.js && node apps/server/dist/db/seed.js && node apps/server/dist/index.js"]

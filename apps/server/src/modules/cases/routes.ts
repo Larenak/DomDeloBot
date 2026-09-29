@@ -4,6 +4,7 @@ import {
   CreateCaseSchema,
   DuplicateSearchSchema,
   ErrorSchema,
+  HouseReportSchema,
   TransitionCaseSchema,
 } from '@domdelo/contracts';
 import type { CaseStatus } from '@domdelo/domain';
@@ -13,6 +14,14 @@ import { randomUUID } from 'node:crypto';
 export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
   const secured = { preHandler: app.authenticate };
 
+  app.get('/api/reports/house', {
+    ...secured,
+    schema: {
+      tags: ['reports'],
+      security: [{ bearerAuth: [] }, { demoUser: [] }],
+      response: { 200: HouseReportSchema, 403: ErrorSchema },
+    },
+  }, async (request) => app.caseRepository.getHouseReport(request.actor!));
   app.get(
     '/api/cases',
     {
@@ -200,10 +209,13 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
           required: ['kind'],
           properties: { kind: { type: 'string', enum: ['problem', 'result'] } },
         },
-        response: { 200: CaseSchema, 400: ErrorSchema, 413: ErrorSchema, 415: ErrorSchema },
+        response: { 200: CaseSchema, 400: ErrorSchema, 403: ErrorSchema, 413: ErrorSchema, 415: ErrorSchema },
       },
     },
     async (request, reply) => {
+      if (request.actor?.isDemoHouse && !app.config.demoMode) {
+        return reply.code(403).send({ error: 'demo_upload_disabled', message: 'Фотографии в открытом демонстрационном доме отключены' });
+      }
       const { caseId } = request.params as { caseId: string };
       const { kind } = request.query as { kind: 'problem' | 'result' };
       const file = await request.file({ limits: { fileSize: 8 * 1024 * 1024, files: 1 } });

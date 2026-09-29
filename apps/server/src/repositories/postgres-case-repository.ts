@@ -1,13 +1,14 @@
 import type {
   CaseCategory,
   CaseDto,
+  HouseReportDto,
   CreateCaseInput,
   DuplicateSearchInput,
   HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
-import { assertTransitionAllowed, type CaseStatus } from '@domdelo/domain';
-import { and, count, desc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { assertTransitionAllowed, type CaseStatus, type UserRole } from '@domdelo/domain';
+import { and, count, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm';
 
 import type { Database } from '../db/client.js';
 import {
@@ -19,6 +20,7 @@ import {
   caseStatusHistory,
   caseWatchers,
   houseMembers,
+  houseRoleGrants,
   houses,
   idempotencyKeys,
   outboxEvents,
@@ -26,6 +28,7 @@ import {
   users,
 } from '../db/schema.js';
 import type { AuthenticatedActor } from '../types.js';
+import { makeHouseReport } from '../modules/cases/report.js';
 import type { ObjectStorage } from '../services/object-storage.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
 import {
@@ -65,7 +68,7 @@ function activeHouseId(actor: AuthenticatedActor): string {
 }
 
 function ensureResident(actor: AuthenticatedActor): void {
-  if (!['resident', 'admin'].includes(actor.role)) {
+  if (!['resident', 'owner', 'tenant', 'chair', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
   }
 }
@@ -96,10 +99,12 @@ export class PostgresCaseRepository implements CaseRepository {
     if (!user) throw new ForbiddenError('Пользователь не найден');
 
     let houseId: string | undefined;
+    let isDemoHouse = false;
     if (user.activeHouseId) {
       const [membership] = await this.db
-        .select({ houseId: houseMembers.houseId })
+        .select({ houseId: houseMembers.houseId, isDemo: houses.isDemo })
         .from(houseMembers)
+        .innerJoin(houses, eq(houseMembers.houseId, houses.id))
         .where(
           and(
             eq(houseMembers.userId, user.id),
@@ -109,15 +114,30 @@ export class PostgresCaseRepository implements CaseRepository {
         )
         .limit(1);
       houseId = membership?.houseId;
+      isDemoHouse = membership?.isDemo ?? false;
     }
+    const verifiedRole = houseId ? await this.getActiveRole(houseId, user.id) : undefined;
+    if (!this.demoMode && !isDemoHouse && !verifiedRole) houseId = undefined;
     return {
       id: user.id,
-      role: user.role,
+      role: verifiedRole ?? 'resident',
       displayName: user.displayName,
+      isDemoHouse,
       ...(houseId ? { houseId } : {}),
     };
   }
 
+  private async getActiveRole(houseId: string, userId: string): Promise<UserRole | undefined> {
+    const [grant] = await this.db.select({ role: houseRoleGrants.role })
+      .from(houseRoleGrants)
+      .where(and(
+        eq(houseRoleGrants.houseId, houseId),
+        eq(houseRoleGrants.userId, userId),
+        isNull(houseRoleGrants.revokedAt),
+        or(isNull(houseRoleGrants.expiresAt), gt(houseRoleGrants.expiresAt, new Date())),
+      )).limit(1);
+    return grant?.role;
+  }
   async resolveMaxUser(input: {
     maxUserId: bigint;
     displayName: string;
@@ -130,11 +150,11 @@ export class PostgresCaseRepository implements CaseRepository {
         target: users.maxUserId,
         set: { displayName: input.displayName },
       })
-      .returning({ id: users.id, role: users.role, displayName: users.displayName });
+      .returning({ id: users.id, displayName: users.displayName });
     if (!user) throw new Error('Не удалось создать пользователя MAX');
     return this.refreshActor({
       id: user.id,
-      role: user.role,
+      role: 'resident',
       displayName: user.displayName,
     });
   }
@@ -151,7 +171,10 @@ export class PostgresCaseRepository implements CaseRepository {
       .innerJoin(houses, eq(houseMembers.houseId, houses.id))
       .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.isFavorite, true)))
       .orderBy(desc(houseMembers.lastUsedAt), houses.address);
-    const activeId = rows.some((row) => row.id === actor.houseId) ? actor.houseId : undefined;
+    const selectedHouse = rows.find((row) => row.id === actor.houseId);
+    const activeGrant = selectedHouse ? await this.getActiveRole(selectedHouse.id, actor.id) : undefined;
+    const activeId = selectedHouse && (this.demoMode || selectedHouse.isDemo || activeGrant)
+      ? selectedHouse.id : undefined;
     return {
       houses: rows.map((row) => ({
         id: row.id,
@@ -159,8 +182,9 @@ export class PostgresCaseRepository implements CaseRepository {
         isActive: row.id === activeId,
         isDemo: row.isDemo,
       })),
-      ...(activeId ? { activeHouseId: activeId } : {}),
+      ...(activeId ? { activeHouseId: activeId, activeRole: selectedHouse?.isDemo ? actor.role : activeGrant ?? actor.role } : {}),
       onboardingRequired: rows.length === 0,
+      accessPending: rows.length > 0 && !activeId && !this.demoMode,
     };
   }
 
@@ -198,7 +222,25 @@ export class PostgresCaseRepository implements CaseRepository {
       return houseId;
     });
     actor.houseId = selected;
-    return this.getHouseContext(actor);
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    const [house] = await this.db.select({ id: houses.id }).from(houses)
+      .where(and(eq(houses.id, houseId), eq(houses.isDemo, true))).limit(1);
+    if (!house) throw new NotFoundError('Демонстрационный дом не найден');
+    const now = new Date();
+    await this.db.transaction(async (tx) => {
+      await tx.insert(houseMembers)
+        .values({ houseId, userId: actor.id, isFavorite: true, lastUsedAt: now })
+        .onConflictDoUpdate({
+          target: [houseMembers.houseId, houseMembers.userId],
+          set: { isFavorite: true, lastUsedAt: now },
+        });
+      await tx.update(users).set({ activeHouseId: houseId }).where(eq(users.id, actor.id));
+    });
+    actor.houseId = houseId;
+    return this.getHouseContext(await this.refreshActor(actor));
   }
 
   async selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
@@ -223,11 +265,12 @@ export class PostgresCaseRepository implements CaseRepository {
         .where(and(eq(houseMembers.userId, actor.id), eq(houseMembers.houseId, houseId))),
     ]);
     actor.houseId = houseId;
-    return this.getHouseContext(actor);
+    return this.getHouseContext(await this.refreshActor(actor));
   }
 
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
     const houseId = activeHouseId(actor);
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const rows = await this.db
       .select({ id: cases.id })
       .from(cases)
@@ -236,7 +279,23 @@ export class PostgresCaseRepository implements CaseRepository {
     return Promise.all(rows.map(({ id }) => this.hydrate(actor, id)));
   }
 
+  async getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto> {
+    if (!['dispatcher', 'authority', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Сводка доступна УК и уполномоченным органам');
+    }
+    const houseId = activeHouseId(actor);
+    const [house, rows] = await Promise.all([
+      this.db.select({ address: houses.address }).from(houses)
+        .where(eq(houses.id, houseId)).limit(1),
+      this.db.select({ id: cases.id }).from(cases).where(eq(cases.houseId, houseId)),
+    ]);
+    if (!house[0]) throw new NotFoundError('Дом не найден');
+    const items = await Promise.all(rows.map(({ id }) => this.hydrate(actor, id)));
+    return makeHouseReport(houseId, house[0].address, items);
+  }
+
   async getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     return this.hydrate(actor, caseId);
   }
 
@@ -245,6 +304,7 @@ export class PostgresCaseRepository implements CaseRepository {
     input: DuplicateSearchInput,
   ): Promise<CaseDto[]> {
     const houseId = activeHouseId(actor);
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const inputText = normalized(`${input.place} ${input.description}`);
     const similarity = sql<number>`similarity(${cases.normalizedText}, ${inputText})`;
     const rows = await this.db
@@ -273,6 +333,9 @@ export class PostgresCaseRepository implements CaseRepository {
     ensureResident(actor);
     const houseId = activeHouseId(actor);
     if (input.duplicateCaseId) return this.confirmCase(actor, input.duplicateCaseId);
+    const [house] = await this.db.select({ isDemo: houses.isDemo }).from(houses)
+      .where(eq(houses.id, houseId)).limit(1);
+    if (!house) throw new NotFoundError('Дом не найден');
 
     const created = await this.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${actor.id}:${idempotencyKey}`}, 0))`);
@@ -295,8 +358,8 @@ export class PostgresCaseRepository implements CaseRepository {
           place: input.place,
           normalizedText: normalized(`${input.place} ${input.description}`),
           status: 'registered',
-          responsibleOrganization: routeResponsibleOrganization(input.category),
-          isDemo: this.demoMode,
+          responsibleOrganization: 'Адресат уточняется диспетчером',
+          isDemo: this.demoMode || house.isDemo,
         })
         .returning({ id: cases.id });
       if (!inserted) throw new Error('Не удалось создать дело');
@@ -379,6 +442,18 @@ export class PostgresCaseRepository implements CaseRepository {
     const current = await this.ensureVisible(actor, caseId);
     const houseId = activeHouseId(actor);
     assertTransitionAllowed(current.status, input.status, actor.role);
+    if (input.status === 'assigned' && !input.assignee?.trim()) {
+      throw new ConflictError('Укажите исполнителя при назначении');
+    }
+    if (input.plannedCompletionAt && !['dispatcher', 'executor', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Плановую дату указывает диспетчер или исполнитель');
+    }
+    if (input.plannedCompletionAt && !['assigned', 'in_progress'].includes(input.status)) {
+      throw new ConflictError('Плановая дата доступна при назначении или начале работ');
+    }
+    if (input.plannedCompletionAt && new Date(input.plannedCompletionAt).getTime() <= Date.now()) {
+      throw new ConflictError('Плановая дата должна быть в будущем');
+    }
 
     await this.db.transaction(async (tx) => {
       const updated = await tx
@@ -388,6 +463,10 @@ export class PostgresCaseRepository implements CaseRepository {
           version: sql`${cases.version} + 1`,
           updatedAt: new Date(),
           ...(input.assignee ? { assignee: input.assignee } : {}),
+          ...(input.plannedCompletionAt ? { plannedCompletionAt: new Date(input.plannedCompletionAt) } : {}),
+          ...(['awaiting_resident_verification', 'resolved', 'disputed'].includes(input.status)
+            ? { plannedCompletionAt: null }
+            : {}),
           ...(input.comment && input.status === 'awaiting_resident_verification'
             ? { resultComment: input.comment }
             : {}),
@@ -408,7 +487,10 @@ export class PostgresCaseRepository implements CaseRepository {
         fromStatus: current.status,
         toStatus: input.status,
         actorId: actor.id,
-        ...(input.comment ? { comment: input.comment } : {}),
+        ...((input.assignee || input.comment) ? {
+          comment: [input.assignee ? 'Исполнитель: ' + input.assignee : '', input.comment].filter(Boolean).join(' · '),
+        } : {}),
+        ...(input.plannedCompletionAt ? { plannedCompletionAt: new Date(input.plannedCompletionAt) } : {}),
       });
       if (input.assignee) {
         await tx.update(assignments).set({ active: false }).where(eq(assignments.caseId, caseId));
@@ -509,7 +591,9 @@ export class PostgresCaseRepository implements CaseRepository {
           fromStatus: caseStatusHistory.fromStatus,
           toStatus: caseStatusHistory.toStatus,
           comment: caseStatusHistory.comment,
+          plannedCompletionAt: caseStatusHistory.plannedCompletionAt,
           actorName: users.displayName,
+          actorIsDemo: users.isDemo,
           createdAt: caseStatusHistory.createdAt,
         })
         .from(caseStatusHistory)
@@ -550,6 +634,7 @@ export class PostgresCaseRepository implements CaseRepository {
       responsibleOrganization: item.responsibleOrganization,
       ...(item.assignee ? { assignee: item.assignee } : {}),
       ...(item.resultComment ? { resultComment: item.resultComment } : {}),
+      ...(item.plannedCompletionAt ? { plannedCompletionAt: item.plannedCompletionAt.toISOString() } : {}),
       version: item.version,
       isDemo: item.isDemo,
       createdAt: item.createdAt.toISOString(),
@@ -559,7 +644,8 @@ export class PostgresCaseRepository implements CaseRepository {
         ...(row.fromStatus ? { fromStatus: row.fromStatus } : {}),
         toStatus: row.toStatus,
         ...(row.comment ? { comment: row.comment } : {}),
-        actorName: row.actorName,
+        ...(row.plannedCompletionAt ? { plannedCompletionAt: row.plannedCompletionAt.toISOString() } : {}),
+        actorName: item.isDemo && !row.actorIsDemo ? 'Участник демонстрации' : row.actorName,
         createdAt: row.createdAt.toISOString(),
       })),
       attachments: attachmentsWithUrls,

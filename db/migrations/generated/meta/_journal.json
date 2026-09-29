@@ -36,6 +36,13 @@
       "when": 1790499705466,
       "tag": "0004_thankful_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790617966697,
+      "tag": "0005_classy_mathemanic",
+      "breakpoints": true
     }
   ]
 }

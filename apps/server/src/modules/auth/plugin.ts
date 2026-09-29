@@ -1,16 +1,22 @@
+import type { UserRole } from '@domdelo/domain';
 import type { FastifyInstance } from 'fastify';
 
 import { demoActors } from '../../repositories/in-memory-case-repository.js';
 import { createSessionToken, verifySessionToken } from './session.js';
 import { validateMaxInitData } from './max-init-data.js';
 
+const publicDemoRoles = new Set<UserRole>(['resident', 'owner', 'tenant', 'chair', 'dispatcher', 'executor', 'authority']);
+
 export async function registerAuth(app: FastifyInstance): Promise<void> {
-  app.get('/api/public-config', async () => ({ demoMode: app.config.demoMode }));
+  app.get('/api/public-config', async () => ({
+    demoMode: app.config.demoMode,
+    ...(app.config.hackathonHouseId ? { demoHouseAvailable: true } : {}),
+  }));
 
   app.decorate('authenticate', async (request, reply) => {
     const demoUser = request.headers['x-demo-user'];
     if (app.config.demoMode && typeof demoUser === 'string' && demoActors[demoUser]) {
-      request.actor = demoActors[demoUser];
+      request.actor = await app.caseRepository.refreshActor(demoActors[demoUser]);
       return;
     }
 
@@ -22,6 +28,11 @@ export async function registerAuth(app: FastifyInstance): Promise<void> {
       return;
     }
     request.actor = await app.caseRepository.refreshActor(sessionActor);
+    const demoRole = request.headers['x-demo-role'];
+    if (request.actor.isDemoHouse && request.actor.houseId === app.config.hackathonHouseId &&
+      typeof demoRole === 'string' && publicDemoRoles.has(demoRole as UserRole)) {
+      request.actor.role = demoRole as UserRole;
+    }
   });
 
   app.post(

@@ -112,3 +112,20 @@ export class DadataAddressProvider implements AddressProvider {
     };
   }
 }
+
+export class DemoAddressProvider implements AddressProvider {
+  private readonly house: VerifiedHouse = {
+    fiasId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    address: 'г. Казань, ул. Спортивная, д. 12 (демо)',
+    city: 'Казань', street: 'Спортивная', building: '12',
+  };
+
+  async suggest(query: string): Promise<AddressSuggestionDto[]> {
+    return this.house.address.toLocaleLowerCase('ru-RU').includes(query.toLocaleLowerCase('ru-RU'))
+      ? [{ value: this.house.address, fiasId: this.house.fiasId, isHouse: true }] : [];
+  }
+
+  async resolveHouse(fiasId: string): Promise<VerifiedHouse | null> {
+    return fiasId === this.house.fiasId ? this.house : null;
+  }
+}

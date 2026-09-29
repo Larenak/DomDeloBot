@@ -18,7 +18,7 @@ const queryClient = new QueryClient({
 });
 
 async function bootstrap() {
-  const publicConfig = await getPublicConfig().catch(() => ({ demoMode: false }));
+  const publicConfig = await getPublicConfig().catch(() => ({ demoMode: false, demoHouseAvailable: false }));
   window.WebApp?.ready?.();
   window.WebApp?.expand?.();
   const launchPath = pathFromMaxStartParam(window.WebApp?.initDataUnsafe?.start_param);
@@ -31,7 +31,7 @@ async function bootstrap() {
       <MaxUI>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <App demoMode={publicConfig.demoMode} />
+            <App demoMode={publicConfig.demoMode} demoHouseAvailable={Boolean(publicConfig.demoHouseAvailable)} />
           </BrowserRouter>
         </QueryClientProvider>
       </MaxUI>

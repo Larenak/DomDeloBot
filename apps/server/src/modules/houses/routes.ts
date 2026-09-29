@@ -70,6 +70,25 @@ export async function registerHouseRoutes(app: FastifyInstance, addressProvider:
   );
 
   app.post(
+    '/api/me/houses/demo',
+    {
+      ...secured,
+      schema: {
+        tags: ['houses'],
+        security,
+        response: { 200: HouseContextSchema, 403: ErrorSchema, 404: ErrorSchema },
+      },
+    },
+    async (request, reply) => {
+      const houseId = app.config.hackathonHouseId;
+      if (!houseId) {
+        return reply.code(404).send({ error: 'not_found', message: 'Демонстрационный дом не настроен' });
+      }
+      return app.caseRepository.joinDemoHouse(request.actor!, houseId);
+    },
+  );
+
+  app.post(
     '/api/me/houses/:houseId/select',
     {
       ...secured,

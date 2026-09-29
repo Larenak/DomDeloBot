@@ -1,5 +1,6 @@
 import type {
   CaseDto,
+  HouseReportDto,
   CreateCaseInput,
   DuplicateSearchInput,
   HouseContextDto,
@@ -14,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AuthenticatedActor } from '../types.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
+import { makeHouseReport } from '../modules/cases/report.js';
 import {
   AddressOnboardingRequiredError,
   ConflictError,
@@ -24,6 +26,7 @@ import {
 } from './case-repository.js';
 
 export const DEMO_HOUSE_ID = '11111111-1111-4111-8111-111111111111';
+export const DEMO_ADDRESS = 'г. Казань, ул. Спортивная, 12';
 
 export const demoActors: Record<string, AuthenticatedActor> = {
   'resident-1': {
@@ -35,6 +38,30 @@ export const demoActors: Record<string, AuthenticatedActor> = {
     id: '33333333-3333-4333-8333-333333333333',
     role: 'resident',
     displayName: 'Михаил Соколов',
+  },
+  'owner-1': {
+    id: '10101010-1010-4010-8010-101010101010',
+    role: 'owner',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Ольга, собственник',
+  },
+  'tenant-1': {
+    id: '20202020-2020-4020-8020-202020202020',
+    role: 'tenant',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Денис, арендатор',
+  },
+  'chair-1': {
+    id: '30303030-3030-4030-8030-303030303030',
+    role: 'chair',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Марина, председатель совета дома',
+  },
+  'authority-1': {
+    id: '40404040-4040-4040-8040-404040404040',
+    role: 'authority',
+    houseId: DEMO_HOUSE_ID,
+    displayName: 'Представитель муниципалитета',
   },
   'dispatcher-1': {
     id: '44444444-4444-4444-8444-444444444444',
@@ -147,7 +174,7 @@ function similarity(left: string, right: string): number {
 }
 
 function ensureResidentOrAdmin(actor: AuthenticatedActor): void {
-  if (!['resident', 'admin'].includes(actor.role)) {
+  if (!['resident', 'owner', 'tenant', 'chair', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
   }
 }
@@ -190,9 +217,15 @@ export class InMemoryCaseRepository implements CaseRepository {
     ],
   ]);
   private readonly favoriteHouses = new Map<string, Set<string>>();
+  private readonly activeHouseIds = new Map<string, string>();
   private readonly maxActors = new Map<bigint, AuthenticatedActor>();
 
   constructor() {
+    for (const actorKey of ['owner-1', 'tenant-1', 'chair-1', 'authority-1', 'dispatcher-1', 'executor-1']) {
+      const actorId = demoActors[actorKey]!.id;
+      this.favoriteHouses.set(actorId, new Set([DEMO_HOUSE_ID]));
+      this.activeHouseIds.set(actorId, DEMO_HOUSE_ID);
+    }
     for (const actorKey of ['resident-1', 'resident-2']) {
       const actor = demoActors[actorKey]!;
       this.confirmations.add(`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:${actor.id}`);
@@ -207,7 +240,14 @@ export class InMemoryCaseRepository implements CaseRepository {
   }
 
   async refreshActor(actor: AuthenticatedActor): Promise<AuthenticatedActor> {
-    return actor;
+    const demo = Object.values(demoActors).find((known) => known.id === actor.id);
+    const houseId = this.activeHouseIds.get(actor.id);
+    return {
+      ...actor,
+      ...(houseId ? { houseId } : {}),
+      role: houseId === DEMO_HOUSE_ID ? demo?.role ?? 'resident' : 'resident',
+      isDemoHouse: houseId === DEMO_HOUSE_ID,
+    };
   }
 
   async resolveMaxUser(input: { maxUserId: bigint; displayName: string }): Promise<AuthenticatedActor> {
@@ -234,8 +274,9 @@ export class InMemoryCaseRepository implements CaseRepository {
         isActive: house.id === actor.houseId,
         isDemo: house.isDemo,
       })),
-      ...(actor.houseId && favorites.has(actor.houseId) ? { activeHouseId: actor.houseId } : {}),
+      ...(actor.houseId && favorites.has(actor.houseId) ? { activeHouseId: actor.houseId, activeRole: actor.role } : {}),
       onboardingRequired: items.length === 0,
+      accessPending: false,
     };
   }
 
@@ -263,7 +304,20 @@ export class InMemoryCaseRepository implements CaseRepository {
     favorites.add(house.id);
     this.favoriteHouses.set(actor.id, favorites);
     actor.houseId = house.id;
-    return this.getHouseContext(actor);
+    this.activeHouseIds.set(actor.id, house.id);
+    return this.getHouseContext(await this.refreshActor(actor));
+  }
+
+  async joinDemoHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
+    if (houseId !== DEMO_HOUSE_ID || !this.houses.get(houseId)?.isDemo) {
+      throw new NotFoundError('Демонстрационный дом не найден');
+    }
+    const favorites = this.favoriteHouses.get(actor.id) || new Set<string>();
+    favorites.add(houseId);
+    this.favoriteHouses.set(actor.id, favorites);
+    this.activeHouseIds.set(actor.id, houseId);
+    actor.houseId = houseId;
+    return this.getHouseContext(await this.refreshActor(actor));
   }
 
   async selectHouse(actor: AuthenticatedActor, houseId: string): Promise<HouseContextDto> {
@@ -271,15 +325,26 @@ export class InMemoryCaseRepository implements CaseRepository {
       throw new ForbiddenError('Сначала добавьте этот адрес в «Мои дома»');
     }
     actor.houseId = houseId;
-    return this.getHouseContext(actor);
+    this.activeHouseIds.set(actor.id, houseId);
+    return this.getHouseContext(await this.refreshActor(actor));
   }
 
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const houseId = activeHouseId(actor);
     return this.items
       .filter((item) => item.houseId === houseId && (!status || item.status === status))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((item) => this.viewCase(actor, item));
+  }
+
+  async getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto> {
+    if (!['dispatcher', 'authority', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Сводка доступна УК и уполномоченным органам');
+    }
+    const houseId = activeHouseId(actor);
+    return makeHouseReport(houseId, this.houses.get(houseId)?.address ?? DEMO_ADDRESS,
+      this.items.filter((item) => item.houseId === houseId));
   }
 
   async getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -291,6 +356,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
   ): Promise<CaseDto[]> {
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const houseId = activeHouseId(actor);
     return this.items
       .filter(
@@ -409,12 +475,28 @@ export class InMemoryCaseRepository implements CaseRepository {
       throw new ConflictError('Карточка уже изменилась. Обновите данные и повторите действие.');
     }
     assertTransitionAllowed(item.status, input.status, actor.role);
+    if (input.status === 'assigned' && !input.assignee?.trim()) {
+      throw new ConflictError('Укажите исполнителя при назначении');
+    }
+    if (input.plannedCompletionAt && !['dispatcher', 'executor', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Плановую дату указывает диспетчер или исполнитель');
+    }
+    if (input.plannedCompletionAt && !['assigned', 'in_progress'].includes(input.status)) {
+      throw new ConflictError('Плановая дата доступна при назначении или начале работ');
+    }
+    if (input.plannedCompletionAt && new Date(input.plannedCompletionAt).getTime() <= Date.now()) {
+      throw new ConflictError('Плановая дата должна быть в будущем');
+    }
 
     const previous = item.status;
     item.status = input.status;
     item.version += 1;
     item.updatedAt = new Date().toISOString();
     if (input.assignee) item.assignee = input.assignee;
+    if (input.plannedCompletionAt) item.plannedCompletionAt = input.plannedCompletionAt;
+    if (['awaiting_resident_verification', 'resolved', 'disputed'].includes(input.status)) {
+      delete item.plannedCompletionAt;
+    }
     if (input.comment && input.status === 'awaiting_resident_verification') {
       item.resultComment = input.comment;
     }
@@ -423,7 +505,10 @@ export class InMemoryCaseRepository implements CaseRepository {
       fromStatus: previous,
       toStatus: input.status,
       actorName: actor.displayName,
-      ...(input.comment ? { comment: input.comment } : {}),
+      ...((input.assignee || input.comment) ? {
+        comment: [input.assignee ? 'Исполнитель: ' + input.assignee : '', input.comment].filter(Boolean).join(' · '),
+      } : {}),
+      ...(input.plannedCompletionAt ? { plannedCompletionAt: input.plannedCompletionAt } : {}),
       createdAt: item.updatedAt,
     });
     return this.viewCase(actor, item);
@@ -458,6 +543,7 @@ export class InMemoryCaseRepository implements CaseRepository {
 
   private getMutable(actor: AuthenticatedActor, caseId: string): CaseDto {
     const houseId = activeHouseId(actor);
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const item = this.items.find((candidate) => candidate.id === caseId);
     if (!item || item.houseId !== houseId) {
       throw new NotFoundError('Дело не найдено');

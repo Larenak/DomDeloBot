@@ -10,7 +10,7 @@ export const caseStatuses = [
 
 export type CaseStatus = (typeof caseStatuses)[number];
 
-export const userRoles = ['resident', 'dispatcher', 'executor', 'admin'] as const;
+export const userRoles = ['resident', 'owner', 'tenant', 'chair', 'dispatcher', 'executor', 'authority', 'admin'] as const;
 export type UserRole = (typeof userRoles)[number];
 
 export type WorkflowActor = {
@@ -38,8 +38,12 @@ const allowedTransitions: Record<CaseStatus, readonly CaseStatus[]> = {
 
 const roleTransitions: Record<UserRole, readonly CaseStatus[]> = {
   resident: ['resolved', 'disputed'],
+  owner: ['resolved', 'disputed'],
+  tenant: ['resolved', 'disputed'],
+  chair: ['resolved', 'disputed'],
   dispatcher: ['registered', 'assigned', 'in_progress', 'awaiting_resident_verification'],
   executor: ['in_progress', 'awaiting_resident_verification'],
+  authority: [],
   admin: caseStatuses,
 };
 

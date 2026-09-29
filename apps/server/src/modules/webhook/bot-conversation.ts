@@ -162,6 +162,10 @@ export class BotConversationService {
         );
         return;
       }
+      if (houseContext.accessPending) {
+        await this.send(context, 'Адрес добавлен, но доступ к делам ожидает проверки проживания или полномочий.');
+        return;
+      }
       const activeHouse = houseContext.houses.find((house) => house.isActive);
       const buttons: BotButton[][] = [[{ type: 'message', text: 'Создать дело' }]];
       if (launchButton) buttons.push([launchButton]);
@@ -183,6 +187,10 @@ export class BotConversationService {
           'Сначала добавьте адрес дома в мини-приложении.',
           launchButton ? [[launchButton]] : undefined,
         );
+        return;
+      }
+      if (houseContext.accessPending) {
+        await this.send(context, 'Для создания дела нужно подтверждение доступа к дому. Статус проверки виден в мини-приложении.');
         return;
       }
       this.drafts.set(key, { state: 'awaiting_description', idempotencyKey: randomUUID() });

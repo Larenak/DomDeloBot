@@ -12,6 +12,7 @@ import { registerAuth } from './modules/auth/plugin.js';
 import { registerCaseRoutes } from './modules/cases/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
 import { registerHouseRoutes } from './modules/houses/routes.js';
+import { registerPollRoutes } from './modules/polls/routes.js';
 import { startOutboxWorker } from './modules/outbox/worker.js';
 import { registerWebhookRoutes } from './modules/webhook/routes.js';
 import {
@@ -23,6 +24,9 @@ import {
 } from './repositories/case-repository.js';
 import { InMemoryCaseRepository } from './repositories/in-memory-case-repository.js';
 import { PostgresCaseRepository } from './repositories/postgres-case-repository.js';
+import { InMemoryPollRepository } from './repositories/in-memory-poll-repository.js';
+import { PostgresPollRepository } from './repositories/postgres-poll-repository.js';
+import type { PollRepository } from './repositories/poll-repository.js';
 import { MaxNotifier, type BotNotifier } from './services/max-notifier.js';
 import {
   InMemoryObjectStorage,
@@ -30,12 +34,13 @@ import {
   S3ObjectStorage,
   type ObjectStorage,
 } from './services/object-storage.js';
-import { AddressProviderUnavailableError, DadataAddressProvider, type AddressProvider } from './services/address-provider.js';
+import { AddressProviderUnavailableError, DadataAddressProvider, DemoAddressProvider, type AddressProvider } from './services/address-provider.js';
 import './types.js';
 
 type BuildAppOptions = {
   config: AppConfig;
   caseRepository?: CaseRepository;
+  pollRepository?: PollRepository;
   objectStorage?: ObjectStorage;
   notifier?: BotNotifier;
   addressProvider?: AddressProvider;
@@ -49,8 +54,7 @@ export async function buildApp(options: BuildAppOptions) {
   });
   app.decorate('config', options.config);
 
-  const needsDatabase = options.config.storageMode === 'postgres' &&
-    (!options.caseRepository || (!options.objectStorage && options.config.objectStorageMode === 'postgres'));
+  const needsDatabase = options.config.storageMode === 'postgres';
   const database = needsDatabase ? createDatabase(options.config) : undefined;
   const objectStorage: ObjectStorage = options.objectStorage || (
     options.config.objectStorageMode === 'memory'
@@ -76,6 +80,11 @@ export async function buildApp(options: BuildAppOptions) {
     ));
     stopOutboxWorker = startOutboxWorker(database!.db, notifier, app.log);
   }
+  app.decorate('pollRepository', options.pollRepository || (
+    options.config.storageMode === 'memory'
+      ? new InMemoryPollRepository()
+      : new PostgresPollRepository(database!.db, options.config.demoMode)
+  ));
   if (database) {
     app.addHook('onClose', async () => {
       stopOutboxWorker?.();
@@ -103,6 +112,7 @@ export async function buildApp(options: BuildAppOptions) {
         { name: 'auth' },
         { name: 'houses' },
         { name: 'cases' },
+        { name: 'polls' },
         { name: 'case-workflow' },
         { name: 'attachments' },
         { name: 'MAX webhook' },
@@ -120,8 +130,9 @@ export async function buildApp(options: BuildAppOptions) {
 
   await registerAuth(app);
   await registerHealthRoutes(app);
-  await registerHouseRoutes(app, options.addressProvider || new DadataAddressProvider(options.config.dadataApiKey));
+  await registerHouseRoutes(app, options.addressProvider || (options.config.demoMode && !options.config.dadataApiKey ? new DemoAddressProvider() : new DadataAddressProvider(options.config.dadataApiKey)));
   await registerCaseRoutes(app);
+  await registerPollRoutes(app);
   await registerWebhookRoutes(app, notifier);
 
   if (objectStorage.get) {

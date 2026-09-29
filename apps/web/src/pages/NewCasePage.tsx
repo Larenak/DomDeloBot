@@ -24,7 +24,7 @@ const initialForm: DuplicateSearchInput & { title: string } = {
   place: '',
 };
 
-export function NewCasePage() {
+export function NewCasePage({ isDemoHouse = false }: { isDemoHouse?: boolean }) {
   const [form, setForm] = useState(initialForm);
   const [step, setStep] = useState<'form' | 'duplicates'>('form');
   const navigate = useNavigate();
@@ -68,6 +68,7 @@ export function NewCasePage() {
       <div className="form-card">
         <span className="eyebrow">Новое дело</span>
         <h1>{step === 'form' ? 'Что случилось?' : 'Похоже, это уже обсуждают'}</h1>
+        {isDemoHouse ? <p className="demo-warning">Это открытый вымышленный дом. Дела видны другим участникам демонстрации. Не указывайте реальные имена, адреса квартир и контакты.</p> : null}
         {step === 'form' ? (
           <form onSubmit={checkDuplicates} className="case-form">
             <label>

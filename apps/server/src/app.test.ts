@@ -2,6 +2,7 @@ import { loadConfig } from '@domdelo/config';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildApp } from './app.js';
+import { createSessionToken } from './modules/auth/session.js';
 import type { AddressProvider, VerifiedHouse } from './services/address-provider.js';
 
 const kazanId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
@@ -104,6 +105,72 @@ describe('ДомДело API', () => {
       headers: { 'x-demo-user': 'resident-1' },
     });
     expect(cases.statusCode).toBe(200);
+  });
+
+  it('opens only the configured demonstration house without an address provider', async () => {
+    const demoConfig = loadConfig({
+      NODE_ENV: 'test',
+      STORAGE_MODE: 'memory',
+      DEMO_MODE: 'true',
+      HACKATHON_HOUSE_ID: '11111111-1111-4111-8111-111111111111',
+      SESSION_SECRET: 'test-session-secret-with-enough-entropy',
+    });
+    const app = await buildApp({ config: demoConfig });
+    openedApps.push(app);
+    const publicConfig = await app.inject({ method: 'GET', url: '/api/public-config' });
+    expect(publicConfig.json()).toMatchObject({ demoHouseAvailable: true });
+    const joined = await app.inject({
+      method: 'POST', url: '/api/me/houses/demo',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(joined.statusCode).toBe(200);
+    expect(joined.json()).toMatchObject({
+      activeHouseId: '11111111-1111-4111-8111-111111111111',
+      onboardingRequired: false, accessPending: false,
+    });
+    const cases = await app.inject({
+      method: 'GET', url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1' },
+    });
+    expect(cases.statusCode).toBe(200);
+    expect(cases.json()).toHaveLength(2);
+  });
+
+  it('allows demo personas only inside the configured demonstration house', async () => {
+    const secret = 'test-session-secret-with-enough-entropy';
+    const demoConfig = loadConfig({
+      NODE_ENV: 'production', STORAGE_MODE: 'memory', DEMO_MODE: 'false',
+      HACKATHON_HOUSE_ID: '11111111-1111-4111-8111-111111111111',
+      SESSION_SECRET: secret,
+    });
+    const app = await buildApp({ config: demoConfig, addressProvider });
+    openedApps.push(app);
+    const token = createSessionToken({
+      id: 'efefefef-efef-4fef-8fef-efefefefefef', role: 'resident', displayName: 'Гость MAX',
+    }, secret);
+    const headers = { authorization: `Bearer ${token}` };
+    const joined = await app.inject({ method: 'POST', url: '/api/me/houses/demo', headers });
+    expect(joined.statusCode).toBe(200);
+    const report = await app.inject({ method: 'GET', url: '/api/reports/house',
+      headers: { ...headers, 'x-demo-role': 'authority' } });
+    expect(report.statusCode).toBe(200);
+    const demoContext = await app.inject({ method: 'GET', url: '/api/me/houses',
+      headers: { ...headers, 'x-demo-role': 'authority' } });
+    expect(demoContext.json().activeRole).toBe('authority');
+    const personalCases = await app.inject({ method: 'GET', url: '/api/cases',
+      headers: { ...headers, 'x-demo-role': 'authority' } });
+    expect(personalCases.statusCode).toBe(403);
+    const upload = await app.inject({ method: 'POST',
+      url: '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/attachments?kind=problem', headers });
+    expect(upload.statusCode).toBe(403);
+    expect(upload.json().error).toBe('demo_upload_disabled');
+    const realHouse = await app.inject({ method: 'POST', url: '/api/me/houses', headers,
+      payload: { fiasId: moscowId } });
+    expect(realHouse.statusCode).toBe(200);
+    expect(realHouse.json().activeRole).toBe('resident');
+    const denied = await app.inject({ method: 'GET', url: '/api/reports/house',
+      headers: { ...headers, 'x-demo-role': 'authority' } });
+    expect(denied.statusCode).toBe(403);
   });
 
   it('suggests known addresses and rejects free text or unknown house identifiers', async () => {
@@ -255,6 +322,37 @@ describe('ДомДело API', () => {
       assignee: 'Мастер домофонов Алексей',
       version: 2,
     });
+  });
+
+  it('shows a dispatcher forecast in the case timeline and clears it after work', async () => {
+    const app = await testApp();
+    const plannedCompletionAt = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const assigned = await app.inject({
+      method: 'PATCH',
+      url: '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/status',
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'assigned', expectedVersion: 1, assignee: 'Мастер', plannedCompletionAt },
+    });
+    expect(assigned.statusCode).toBe(200);
+    expect(assigned.json()).toMatchObject({ plannedCompletionAt });
+    expect(assigned.json().history.at(-1)).toMatchObject({ plannedCompletionAt, comment: 'Исполнитель: Мастер' });
+
+    const started = await app.inject({
+      method: 'PATCH',
+      url: '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/status',
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'in_progress', expectedVersion: 2 },
+    });
+    expect(started.json().plannedCompletionAt).toBe(plannedCompletionAt);
+
+    const finished = await app.inject({
+      method: 'PATCH',
+      url: '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/status',
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'awaiting_resident_verification', expectedVersion: 3 },
+    });
+    expect(finished.json().plannedCompletionAt).toBeUndefined();
+    expect(finished.json().history[1].plannedCompletionAt).toBe(plannedCompletionAt);
   });
 
   it('stores a repeated MAX webhook only once', async () => {

@@ -5,7 +5,7 @@ import { caseApi, houseApi } from '../api.js';
 import { CaseCard } from '../components/CaseCard.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateViews.js';
 
-export function CasesPage() {
+export function CasesPage({ canCreate, canWatch }: { canCreate: boolean; canWatch: boolean }) {
   const query = useQuery({ queryKey: ['cases'], queryFn: caseApi.list });
   const houses = useQuery({ queryKey: ['house-context'], queryFn: houseApi.context });
   const activeHouse = houses.data?.houses.find((house) => house.isActive);
@@ -20,9 +20,9 @@ export function CasesPage() {
           <h1>Дела нашего дома</h1>
           <p>Одна проблема — одно прозрачное дело до подтверждённого результата.</p>
         </div>
-        <Link className="button button--primary hero__button" to="/new">
+        {canCreate ? <Link className="button button--primary hero__button" to="/new">
           <span aria-hidden="true">＋</span> Создать дело
-        </Link>
+        </Link> : null}
       </section>
 
       {query.isPending ? <LoadingState label="Загружаем дела дома" /> : null}
@@ -32,7 +32,7 @@ export function CasesPage() {
       {query.data?.length === 0 ? <EmptyState /> : null}
       {query.data && query.data.length > 0 ? (
         <>
-          <section className="section-heading">
+          {canWatch ? <><section className="section-heading">
             <div>
               <h2>Отслеживаю</h2>
               <p>Дела этого дома, за которыми вы следите</p>
@@ -46,16 +46,17 @@ export function CasesPage() {
           ) : (
             <p className="muted-box">Откройте дело и нажмите «Следить за делом» — оно появится здесь.</p>
           )}
+          </> : null}
           <section className="section-heading">
             <div>
-              <h2>Остальные дела дома</h2>
-              <p>Все обращения по выбранному адресу, на которые вы ещё не подписаны</p>
+              <h2>{canWatch ? "Остальные дела дома" : "Дела дома"}</h2>
+              <p>{canWatch ? "Все обращения по выбранному адресу, на которые вы ещё не подписаны" : "Все обращения по выбранному адресу"}</p>
             </div>
-            <span className="count-badge">{otherCases.length}</span>
+            <span className="count-badge">{canWatch ? otherCases.length : query.data.length}</span>
           </section>
-          {otherCases.length ? (
+          {(canWatch ? otherCases : query.data).length ? (
             <div className="case-list">
-              {otherCases.map((item) => <CaseCard key={item.id} item={item} />)}
+              {(canWatch ? otherCases : query.data).map((item) => <CaseCard key={item.id} item={item} />)}
             </div>
           ) : <p className="muted-box">Других дел пока нет.</p>}
         </>

@@ -9,7 +9,10 @@ import {
   caseWatchers,
   chatBindings,
   houseMembers,
+  houseRoleGrants,
   houses,
+  polls,
+  pollOptions,
   users,
 } from './schema.js';
 
@@ -23,6 +26,10 @@ const demoUsers = [
   { id: '77777777-7777-4777-8777-777777777777', displayName: 'Павел Орлов', role: 'resident' as const },
   { id: '88888888-8888-4888-8888-888888888888', displayName: 'Мария Волкова', role: 'resident' as const },
   { id: '99999999-9999-4999-8999-999999999999', displayName: 'Алексей Морозов', role: 'resident' as const },
+  { id: '10101010-1010-4010-8010-101010101010', displayName: 'Ольга, собственник', role: 'owner' as const },
+  { id: '20202020-2020-4020-8020-202020202020', displayName: 'Денис, арендатор', role: 'tenant' as const },
+  { id: '30303030-3030-4030-8030-303030303030', displayName: 'Марина, председатель совета дома', role: 'chair' as const },
+  { id: '40404040-4040-4040-8040-404040404040', displayName: 'Представитель муниципалитета', role: 'authority' as const },
 ];
 
 const config = loadConfig();
@@ -44,15 +51,19 @@ try {
       .insert(houseMembers)
       .values(demoUsers.map((user) => ({ houseId, userId: user.id })))
       .onConflictDoNothing();
-    await tx
-      .insert(chatBindings)
-      .values({
+    await tx.insert(houseRoleGrants).values(
+      demoUsers.filter((user) => user.role !== 'resident').map((user) => ({
+        houseId, userId: user.id, role: user.role, source: 'demo_seed',
+      })),
+    ).onConflictDoNothing();
+    if (config.demoMode) {
+      await tx.insert(chatBindings).values({
         id: '12121212-1212-4212-8212-121212121212',
         houseId,
         maxChatId: -1000128n,
         isDemo: true,
-      })
-      .onConflictDoNothing();
+      }).onConflictDoNothing();
+    }
 
     await tx
       .insert(cases)
@@ -154,6 +165,17 @@ try {
         },
       ])
       .onConflictDoNothing();
+    await tx.insert(polls).values({
+      id: '51515151-5151-4515-8515-515151515151',
+      houseId,
+      createdBy: '30303030-3030-4030-8030-303030303030',
+      question: 'Как улучшить освещение двора?',
+      closesAt: new Date(Date.now() + 7 * 86_400_000),
+    }).onConflictDoNothing();
+    await tx.insert(pollOptions).values([
+      { id: '61616161-6161-4616-8616-616161616161', pollId: '51515151-5151-4515-8515-515151515151', label: 'Добавить фонари у дорожек', position: 0 },
+      { id: '71717171-7171-4717-8717-717171717171', pollId: '51515151-5151-4515-8515-515151515151', label: 'Осветить детскую площадку', position: 1 },
+    ]).onConflictDoNothing();
     await tx.execute(
       sql`select setval(pg_get_serial_sequence('cases', 'number'), greatest((select max(number) from cases), 1))`,
     );

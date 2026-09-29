@@ -3,7 +3,7 @@ import { and, eq, isNull, lte } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 
 import type { Database } from '../../db/client.js';
-import { cases, chatBindings, outboxEvents } from '../../db/schema.js';
+import { cases, chatBindings, houses, outboxDeliveries, outboxEvents } from '../../db/schema.js';
 import type { BotNotifier } from '../../services/max-notifier.js';
 
 export function startOutboxWorker(
@@ -25,18 +25,35 @@ export function startOutboxWorker(
         .limit(20);
       for (const event of events) {
         try {
-          const [target] = await db
+          const targets = await db
             .select({ chatId: chatBindings.maxChatId, caseNumber: cases.number })
             .from(cases)
             .innerJoin(chatBindings, eq(cases.houseId, chatBindings.houseId))
-            .where(eq(cases.id, event.aggregateId))
-            .limit(1);
-          if (!target) throw new Error('Для дома не настроен чат MAX');
+            .where(eq(cases.id, event.aggregateId));
+          if (targets.length === 0) {
+            const [house] = await db
+              .select({ isDemo: houses.isDemo })
+              .from(cases)
+              .innerJoin(houses, eq(cases.houseId, houses.id))
+              .where(eq(cases.id, event.aggregateId))
+              .limit(1);
+            if (!house?.isDemo) throw new Error('Для дома не настроен чат MAX');
+          }
           const payload = event.payload as { toStatus?: CaseStatus };
-          const message = payload.toStatus
-            ? `**Дело №${target.caseNumber}**\nНовый статус: ${caseStatusLabels[payload.toStatus]}`
-            : `**Дело №${target.caseNumber} зарегистрировано**\nОткройте мини-приложение, чтобы посмотреть детали.`;
-          await notifier.sendToChat(Number(target.chatId), message);
+          for (const target of targets) {
+            const [delivered] = await db.select({ eventId: outboxDeliveries.eventId })
+              .from(outboxDeliveries)
+              .where(and(eq(outboxDeliveries.eventId, event.id),
+                eq(outboxDeliveries.maxChatId, target.chatId))).limit(1);
+            if (delivered) continue;
+            const message = payload.toStatus
+              ? `**Дело №${target.caseNumber}**\nНовый статус: ${caseStatusLabels[payload.toStatus]}`
+              : `**Дело №${target.caseNumber} зарегистрировано**\nОткройте мини-приложение, чтобы посмотреть детали.`;
+            await notifier.sendToChat(Number(target.chatId), message);
+            await db.insert(outboxDeliveries).values({
+              eventId: event.id, maxChatId: target.chatId,
+            }).onConflictDoNothing();
+          }
           await db
             .update(outboxEvents)
             .set({ processedAt: new Date(), lastError: null })

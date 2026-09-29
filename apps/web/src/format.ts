@@ -10,6 +10,12 @@ export function formatRelativeDate(value: string, now = new Date()): string {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date);
 }
 
+export function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(value));
+}
+
 export function statusTone(status: CaseStatus): string {
   if (status === 'resolved') return 'success';
   if (status === 'disputed') return 'danger';
