@@ -64,8 +64,8 @@ export class InMemoryPollRepository implements PollRepository {
   }
 
   async vote(actor: AuthenticatedActor, pollId: string, optionId: string): Promise<PollDto> {
-    if (!['owner', 'chair'].includes(actor.role)) {
-      throw new ForbiddenError('Голосовать может только подтверждённый собственник');
+    if (!['resident', 'chair'].includes(actor.role)) {
+      throw new ForbiddenError('Ответить на опрос может житель или председатель дома');
     }
     const poll = this.polls.find((item) => item.id === pollId && item.houseId === activeHouseId(actor));
     if (!poll) throw new NotFoundError('Опрос не найден');

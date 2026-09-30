@@ -17,6 +17,7 @@ export interface BotNotifier {
   sendToUser(userId: number, message: string, options?: BotMessageOptions): Promise<void>;
   answerCallback(callbackId: string, message?: string): Promise<void>;
   chatMembers(chatId: number, userIds: number[]): Promise<number[]>;
+  chatAdminAccess(chatId: number): Promise<{ isAdmin: boolean; canRemoveMembers: boolean }>;
   postToChat(chatId: number, message: string): Promise<string>;
   pinChatMessage(chatId: number, messageId: string): Promise<void>;
   removeChatMember(chatId: number, userId: number): Promise<void>;
@@ -62,6 +63,16 @@ export class MaxNotifier implements BotNotifier {
   async sendToChat(chatId: number, message: string, options?: BotMessageOptions): Promise<void> {
     if (!this.bot) return;
     await this.bot.api.sendMessageToChat(chatId, message, this.messageExtra(options));
+  }
+
+  async chatAdminAccess(chatId: number): Promise<{ isAdmin: boolean; canRemoveMembers: boolean }> {
+    if (!this.bot) throw new Error('MAX_BOT_TOKEN не настроен');
+    const membership = await this.bot.api.getChatMembership(chatId);
+    const isAdmin = membership.is_admin || membership.is_owner;
+    return {
+      isAdmin,
+      canRemoveMembers: isAdmin && (membership.is_owner || Boolean(membership.permissions?.includes('add_remove_members'))),
+    };
   }
 
   async chatMembers(chatId: number, userIds: number[]): Promise<number[]> {

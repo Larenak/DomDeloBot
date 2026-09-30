@@ -18,8 +18,6 @@ import { ServicesPage } from './pages/ServicesPage.js';
 const demoUsers: Array<{ key: DemoUserKey; label: string }> = [
   { key: 'resident-1', label: 'Житель · Анна' },
   { key: 'resident-2', label: 'Житель · Михаил' },
-  { key: 'owner-1', label: 'Собственник · Ольга' },
-  { key: 'tenant-1', label: 'Арендатор · Денис' },
   { key: 'chair-1', label: 'Председатель · Марина' },
   { key: 'authority-1', label: 'Муниципалитет · представитель' },
   { key: 'dispatcher-1', label: 'Диспетчер · Елена' },
@@ -27,8 +25,8 @@ const demoUsers: Array<{ key: DemoUserKey; label: string }> = [
 ];
 
 const publicDemoRoles: Array<{ value: PublicDemoRole; label: string }> = [
-  { value: 'resident', label: 'Житель' }, { value: 'owner', label: 'Собственник' },
-  { value: 'tenant', label: 'Арендатор' }, { value: 'chair', label: 'Председатель' },
+  { value: 'resident', label: 'Житель' },
+  { value: 'chair', label: 'Председатель' },
   { value: 'dispatcher', label: 'Диспетчер УК' }, { value: 'executor', label: 'Исполнитель' },
   { value: 'authority', label: 'Госорган' },
 ];
@@ -59,8 +57,8 @@ function AppShell({ demoMode }: { demoMode: boolean }) {
   const isWorkRole = ['dispatcher', 'executor', 'admin'].includes(role);
   const isAuthority = role === 'authority';
   const canReport = ['dispatcher', 'authority', 'admin'].includes(role);
-  const canCreate = ['resident', 'owner', 'tenant', 'chair', 'admin'].includes(role);
-  const canWatch = ['resident', 'owner', 'tenant', 'chair'].includes(role);
+  const canCreate = ['resident', 'chair', 'admin'].includes(role);
+  const canWatch = ['resident', 'chair'].includes(role);
   const homePath = isAuthority ? '/reports' : isWorkRole ? '/dispatcher' : '/';
   const switchUser = (value: DemoUserKey) => {
     setDemoUser(value);

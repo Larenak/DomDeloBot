@@ -7,7 +7,7 @@ import type {
   HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
-import { assertTransitionAllowed, type CaseStatus, type UserRole } from '@domdelo/domain';
+import { assertTransitionAllowed, userRoles, type CaseStatus, type UserRole } from '@domdelo/domain';
 import { and, count, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm';
 
 import type { Database } from '../db/client.js';
@@ -69,7 +69,7 @@ function activeHouseId(actor: AuthenticatedActor): string {
 }
 
 function ensureResident(actor: AuthenticatedActor): void {
-  if (!['resident', 'owner', 'tenant', 'chair', 'admin'].includes(actor.role)) {
+  if (!['resident', 'chair', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
   }
 }
@@ -138,7 +138,7 @@ export class PostgresCaseRepository implements CaseRepository {
         isNull(houseRoleGrants.revokedAt),
         or(isNull(houseRoleGrants.expiresAt), gt(houseRoleGrants.expiresAt, new Date())),
       )).limit(1);
-    return grant?.role;
+    return grant && userRoles.includes(grant.role as UserRole) ? grant.role as UserRole : undefined;
   }
   async resolveMaxUser(input: {
     maxUserId: bigint;

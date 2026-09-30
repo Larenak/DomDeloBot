@@ -40,18 +40,6 @@ export const demoActors: Record<string, AuthenticatedActor> = {
     role: 'resident',
     displayName: 'Михаил Соколов',
   },
-  'owner-1': {
-    id: '10101010-1010-4010-8010-101010101010',
-    role: 'owner',
-    houseId: DEMO_HOUSE_ID,
-    displayName: 'Ольга, собственник',
-  },
-  'tenant-1': {
-    id: '20202020-2020-4020-8020-202020202020',
-    role: 'tenant',
-    houseId: DEMO_HOUSE_ID,
-    displayName: 'Денис, арендатор',
-  },
   'chair-1': {
     id: '30303030-3030-4030-8030-303030303030',
     role: 'chair',
@@ -175,7 +163,7 @@ function similarity(left: string, right: string): number {
 }
 
 function ensureResidentOrAdmin(actor: AuthenticatedActor): void {
-  if (!['resident', 'owner', 'tenant', 'chair', 'admin'].includes(actor.role)) {
+  if (!['resident', 'chair', 'admin'].includes(actor.role)) {
     throw new ForbiddenError('Действие доступно жильцу дома');
   }
 }
@@ -222,7 +210,7 @@ export class InMemoryCaseRepository implements CaseRepository {
   private readonly maxActors = new Map<bigint, AuthenticatedActor>();
 
   constructor() {
-    for (const actorKey of ['owner-1', 'tenant-1', 'chair-1', 'authority-1', 'dispatcher-1', 'executor-1']) {
+    for (const actorKey of ['chair-1', 'authority-1', 'dispatcher-1', 'executor-1']) {
       const actorId = demoActors[actorKey]!.id;
       this.favoriteHouses.set(actorId, new Set([DEMO_HOUSE_ID]));
       this.activeHouseIds.set(actorId, DEMO_HOUSE_ID);
