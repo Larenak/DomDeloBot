@@ -6,8 +6,6 @@ type DemoScenario = { role: PublicDemoRole; title: string; description: string; 
 
 const scenarios: DemoScenario[] = [
   { role: 'resident', title: 'Житель', description: 'Создать дело, подтвердить проблему соседа и следить за результатом.', destination: '/', user: 'resident-1' },
-  { role: 'owner', title: 'Собственник', description: 'Посмотреть дела дома и проголосовать в опросе.', destination: '/polls', user: 'owner-1' },
-  { role: 'tenant', title: 'Арендатор', description: 'Проверить доступные действия жильца и ограничения голосования.', destination: '/', user: 'tenant-1' },
   { role: 'chair', title: 'Председатель', description: 'Создать опрос для дома и посмотреть ответы жителей.', destination: '/polls', user: 'chair-1' },
   { role: 'dispatcher', title: 'Диспетчер УК', description: 'Принять дело, назначить исполнителя и вести статусы.', destination: '/dispatcher', user: 'dispatcher-1' },
   { role: 'executor', title: 'Исполнитель', description: 'Открыть очередь работ и показать ход выполнения.', destination: '/dispatcher', user: 'executor-1' },
@@ -58,7 +56,7 @@ export function DemoPage({ demoMode, demoHouseAvailable }: { demoMode: boolean; 
         <ol className="demo-steps">
           <li>Житель создаёт дело, подтверждает чужое и добавляет его в отслеживаемые. В карточке можно развернуть учебное изображение.</li>
           <li>Диспетчер УК видит очередь и меняет статус; исполнитель показывает ход работы. Житель проверяет результат.</li>
-          <li>Председатель создаёт опрос, собственник голосует, представитель муниципалитета смотрит сводку.</li>
+          <li>Председатель создаёт опрос, житель голосует, представитель муниципалитета смотрит сводку.</li>
           <li>В разделе «Услуги» показаны отдельно помеченные учебные сведения об УК и капремонте.</li>
         </ol>
       </section>
