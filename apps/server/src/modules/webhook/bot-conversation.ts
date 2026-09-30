@@ -151,6 +151,36 @@ export class BotConversationService {
     if (!context) return;
     const key = this.key(context);
 
+    if (context.callbackPayload?.startsWith('domdelo:deadline:')) {
+      const caseId = context.callbackPayload.slice('domdelo:deadline:'.length);
+      const actor = await this.resolveActor(context);
+      const item = await this.app.caseRepository.getCase(actor, caseId);
+      const clock = item.deadline;
+      if (context.callbackId) await this.notifier.answerCallback(context.callbackId, 'Срок обновлён');
+      if (!clock) {
+        await this.send(context, 'Для этого дела время в работе пока недоступно.');
+        return;
+      }
+      const end = clock.stoppedAt ? new Date(clock.stoppedAt).getTime() : Date.now();
+      const elapsedDays = Math.floor(Math.max(0, end - new Date(clock.startedAt).getTime()) / 86_400_000);
+      const elapsedHours = Math.floor(Math.max(0, end - new Date(clock.startedAt).getTime()) % 86_400_000 / 3_600_000);
+      const elapsedMinutes = Math.floor(Math.max(0, end - new Date(clock.startedAt).getTime()) % 3_600_000 / 60_000);
+      if (!clock.dueAt) {
+        await this.send(context,
+          `Дело **№${item.number}**. Время в работе: **${elapsedDays} д ${elapsedHours} ч ${elapsedMinutes} мин**.\n\nЕдиный нормативный срок выполнения работ для этой общей категории не установлен. Отсчёт идёт с регистрации дела${clock.stoppedAt ? ' до сообщения исполнителя о выполнении.' : '.'}`);
+        return;
+      }
+      const overdue = end > new Date(clock.dueAt).getTime();
+      const message = overdue
+        ? `Дело **№${item.number}**: контрольный срок превышен${clock.stoppedAt ? ' до завершения работ' : ', а дело ещё не выполнено'}.\n\n${clock.note}`
+        : `Дело **№${item.number}**: контрольный срок пока не превышен${clock.stoppedAt ? '; исполнитель сообщил о выполнении' : ''}.\n\n${clock.note}`;
+      await this.send(context, message,
+        overdue && clock.complaintGuideUrl
+          ? [[{ type: 'link', text: 'Как подать обращение в ГИС ЖКХ', url: clock.complaintGuideUrl }]]
+          : undefined);
+      return;
+    }
+
     if (update.update_type === 'bot_started' || context.text === '/start') {
       const launchButton = this.miniAppButton('Открыть ДомДело');
       const demoButtons: BotButton[][] = this.demoAvailable()
@@ -342,7 +372,10 @@ export class BotConversationService {
           ? `Вы присоединились к делу **№${item.number}**. Теперь проблему подтвердили ${item.confirmationsCount} жильцов.`
           : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`) +
           (photoAllowed ? '' : '\n\nФотография не сохранена: демонстрационный дом открыт для других участников.'),
-        caseButton ? [[caseButton]] : undefined,
+        [
+          ...(caseButton ? [[caseButton]] : []),
+          [{ type: 'callback', text: 'Проверить время по делу', payload: `domdelo:deadline:${item.id}` }],
+        ],
       );
     } catch (error) {
       await this.send(

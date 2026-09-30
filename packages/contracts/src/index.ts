@@ -111,6 +111,16 @@ export const AttachmentSchema = Type.Object({
   createdAt: Type.String({ format: 'date-time' }),
 });
 
+export const CaseDeadlineSchema = Type.Object({
+  startedAt: Type.String({ format: 'date-time' }),
+  dueAt: Type.Optional(Type.String({ format: 'date-time' })),
+  stoppedAt: Type.Optional(Type.String({ format: 'date-time' })),
+  title: Type.String(),
+  note: Type.String(),
+  sourceUrl: Type.Optional(Type.String({ format: 'uri' })),
+  complaintGuideUrl: Type.Optional(Type.String({ format: 'uri' })),
+});
+
 export const CaseSchema = Type.Object({
   id: Type.String({ format: 'uuid' }),
   number: Type.Integer({ minimum: 1 }),
@@ -129,6 +139,7 @@ export const CaseSchema = Type.Object({
   assignee: Type.Optional(Type.String()),
   resultComment: Type.Optional(Type.String()),
   plannedCompletionAt: Type.Optional(Type.String({ format: 'date-time' })),
+  deadline: Type.Optional(CaseDeadlineSchema),
   version: Type.Integer({ minimum: 1 }),
   isDemo: Type.Boolean(),
   createdAt: Type.String({ format: 'date-time' }),

@@ -24,7 +24,7 @@ Health: `http://localhost:8080/health/ready`
 
 ## Локальный demo-режим без Docker
 
-Нужны Node.js `24.21.0` и pnpm `11.25.0`.
+Поддерживается Node.js `>=24.19.0 <25` и pnpm `11.25.0`. Рекомендуемая версия Node.js — `24.21.0` (закреплена в `.nvmrc` и Dockerfile).
 
 ```bash
 pnpm install --frozen-lockfile

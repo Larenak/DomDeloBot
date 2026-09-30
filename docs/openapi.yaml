@@ -900,6 +900,32 @@ paths:
                     plannedCompletionAt:
                       format: date-time
                       type: string
+                    deadline:
+                      type: object
+                      required:
+                        - startedAt
+                        - title
+                        - note
+                      properties:
+                        startedAt:
+                          format: date-time
+                          type: string
+                        dueAt:
+                          format: date-time
+                          type: string
+                        stoppedAt:
+                          format: date-time
+                          type: string
+                        title:
+                          type: string
+                        note:
+                          type: string
+                        sourceUrl:
+                          format: uri
+                          type: string
+                        complaintGuideUrl:
+                          format: uri
+                          type: string
                     version:
                       minimum: 1
                       type: integer
@@ -1205,6 +1231,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -1489,6 +1541,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -1854,6 +1932,32 @@ paths:
                     plannedCompletionAt:
                       format: date-time
                       type: string
+                    deadline:
+                      type: object
+                      required:
+                        - startedAt
+                        - title
+                        - note
+                      properties:
+                        startedAt:
+                          format: date-time
+                          type: string
+                        dueAt:
+                          format: date-time
+                          type: string
+                        stoppedAt:
+                          format: date-time
+                          type: string
+                        title:
+                          type: string
+                        note:
+                          type: string
+                        sourceUrl:
+                          format: uri
+                          type: string
+                        complaintGuideUrl:
+                          format: uri
+                          type: string
                     version:
                       minimum: 1
                       type: integer
@@ -2106,6 +2210,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -2342,6 +2472,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -2577,6 +2733,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -2858,6 +3040,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
@@ -3134,6 +3342,32 @@ paths:
                   plannedCompletionAt:
                     format: date-time
                     type: string
+                  deadline:
+                    type: object
+                    required:
+                      - startedAt
+                      - title
+                      - note
+                    properties:
+                      startedAt:
+                        format: date-time
+                        type: string
+                      dueAt:
+                        format: date-time
+                        type: string
+                      stoppedAt:
+                        format: date-time
+                        type: string
+                      title:
+                        type: string
+                      note:
+                        type: string
+                      sourceUrl:
+                        format: uri
+                        type: string
+                      complaintGuideUrl:
+                        format: uri
+                        type: string
                   version:
                     minimum: 1
                     type: integer
