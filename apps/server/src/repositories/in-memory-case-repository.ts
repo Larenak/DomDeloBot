@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuthenticatedActor } from '../types.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
 import { makeHouseReport } from '../modules/cases/report.js';
+import { caseDeadlineDto, startCaseDeadline } from '../modules/cases/deadline-policy.js';
 import { assertAcceptableCaseText } from '../services/case-text-moderation.js';
 import {
   AddressOnboardingRequiredError,
@@ -424,6 +425,12 @@ export class InMemoryCaseRepository implements CaseRepository {
     if (existingId) return this.getCase(actor, existingId);
 
     const createdAt = new Date().toISOString();
+    const deadline = startCaseDeadline(input.category, new Date(createdAt));
+    const deadlineDto = caseDeadlineDto({
+      policyKey: deadline.policyKey,
+      startedAt: deadline.startedAt,
+      dueAt: deadline.dueAt,
+    });
     const item: CaseDto = {
       id: randomUUID(),
       number: Math.max(0, ...this.items.map((candidate) => candidate.number)) + 1,
@@ -434,6 +441,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       ...(input.entrance ? { entrance: input.entrance } : {}),
       place: input.place,
       status: 'registered',
+      ...(deadlineDto ? { deadline: deadlineDto } : {}),
       confirmationsCount: 1,
       watchersCount: 1,
       isWatched: true,
@@ -523,6 +531,13 @@ export class InMemoryCaseRepository implements CaseRepository {
     item.status = input.status;
     item.version += 1;
     item.updatedAt = new Date().toISOString();
+    if (item.deadline) {
+      if (input.status === 'awaiting_resident_verification' || (input.status === 'resolved' && !item.deadline.stoppedAt)) {
+        item.deadline.stoppedAt = item.updatedAt;
+      } else if (input.status === 'disputed') {
+        delete item.deadline.stoppedAt;
+      }
+    }
     if (input.assignee) item.assignee = input.assignee;
     if (input.plannedCompletionAt) item.plannedCompletionAt = input.plannedCompletionAt;
     if (['awaiting_resident_verification', 'resolved', 'disputed'].includes(input.status)) {
@@ -583,8 +598,16 @@ export class InMemoryCaseRepository implements CaseRepository {
   }
 
   private viewCase(actor: AuthenticatedActor, item: CaseDto): CaseDto {
+    const started = startCaseDeadline(item.category, new Date(item.createdAt));
+    const fallbackDeadline = caseDeadlineDto({
+      policyKey: started.policyKey,
+      startedAt: started.startedAt,
+      dueAt: started.dueAt,
+      stoppedAt: ['awaiting_resident_verification', 'resolved'].includes(item.status) ? item.updatedAt : undefined,
+    });
     return {
       ...structuredClone(item),
+      ...(item.deadline ? {} : fallbackDeadline ? { deadline: fallbackDeadline } : {}),
       isWatched: this.watchers.has(`${item.id}:${actor.id}`),
       canDelete: this.authors.get(item.id) === actor.id,
     };

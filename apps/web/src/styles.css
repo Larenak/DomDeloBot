@@ -163,6 +163,13 @@ label input, label select, label textarea { display: block; margin-top: 7px; fon
 .collective-stats span { color: var(--muted); font-size: 12px; }
 .action-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .content-card { margin-top: 14px; box-shadow: 0 5px 18px rgba(37,55,90,.045); }
+.case-deadline h2 { margin: 0 0 12px; font-size: 20px; }
+.case-deadline p { margin: 8px 0; color: #536076; line-height: 1.5; }
+.case-deadline .case-deadline__time { color: #0a6651; font-size: clamp(22px, 3vw, 30px); font-weight: 750; font-variant-numeric: tabular-nums; }
+.case-deadline--overdue { border-color: #f3c1bf; background: #fffafa; }
+.case-deadline--overdue .case-deadline__time { color: #b63c35; }
+.case-deadline .case-deadline__note { max-width: 760px; font-size: 13px; }
+.case-deadline .case-deadline__complaint { margin-top: 18px; padding: 14px; border-radius: 12px; background: #fff1ed; }
 .muted-box { padding: 18px; border-radius: 14px; color: var(--muted); background: #f5f7fa; text-align: center; }
 .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .photo-grid figure { position: relative; aspect-ratio: 4 / 3; margin: 0; overflow: hidden; border-radius: 15px; background: #edf0f5; }

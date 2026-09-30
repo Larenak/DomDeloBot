@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { caseApi } from '../api.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 import { PhotoGallery } from '../components/PhotoGallery.js';
+import { CaseDeadlinePanel } from '../components/CaseDeadlinePanel.js';
 import { formatDateTime, formatRelativeDate, statusTone } from '../format.js';
 
 const actionLabels = {
@@ -160,6 +161,8 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
           {remove.isError ? <p className="form-error" role="alert">{remove.error.message}</p> : null}
         </section>
       ) : null}
+
+      {item.deadline ? <CaseDeadlinePanel deadline={item.deadline} /> : null}
 
       <section className="content-card">
         <div className="section-heading section-heading--inside">

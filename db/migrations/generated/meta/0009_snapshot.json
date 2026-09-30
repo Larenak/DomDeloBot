@@ -1,6 +1,6 @@
 {
-  "id": "f619ea39-d498-426d-8538-69fbd8830b15",
-  "prevId": "2b5fe698-715f-4e2a-bbdc-4701ce42c096",
+  "id": "8b88c5a5-45f7-4bed-80f7-5f8d8810fc28",
+  "prevId": "f619ea39-d498-426d-8538-69fbd8830b15",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -557,6 +557,30 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'registered'"
+        },
+        "deadline_policy_key": {
+          "name": "deadline_policy_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deadline_started_at": {
+          "name": "deadline_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deadline_due_at": {
+          "name": "deadline_due_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deadline_stopped_at": {
+          "name": "deadline_stopped_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "responsible_organization": {
           "name": "responsible_organization",

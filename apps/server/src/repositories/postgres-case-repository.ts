@@ -29,6 +29,7 @@ import {
 } from '../db/schema.js';
 import type { AuthenticatedActor } from '../types.js';
 import { makeHouseReport } from '../modules/cases/report.js';
+import { caseDeadlineDto, startCaseDeadline } from '../modules/cases/deadline-policy.js';
 import type { ObjectStorage } from '../services/object-storage.js';
 import { assertAcceptableCaseText } from '../services/case-text-moderation.js';
 import type { VerifiedHouse } from '../services/address-provider.js';
@@ -384,6 +385,7 @@ export class PostgresCaseRepository implements CaseRepository {
     const [house] = await this.db.select({ isDemo: houses.isDemo }).from(houses)
       .where(eq(houses.id, houseId)).limit(1);
     if (!house) throw new NotFoundError('Дом не найден');
+    const deadline = startCaseDeadline(input.category, new Date());
 
     const created = await this.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${actor.id}:${idempotencyKey}`}, 0))`);
@@ -406,6 +408,9 @@ export class PostgresCaseRepository implements CaseRepository {
           place: input.place,
           normalizedText: normalized(`${input.place} ${input.description}`),
           status: 'registered',
+          deadlinePolicyKey: deadline.policyKey,
+          deadlineStartedAt: deadline.startedAt,
+          ...(deadline.dueAt ? { deadlineDueAt: deadline.dueAt } : {}),
           responsibleOrganization: 'Адресат уточняется диспетчером',
           isDemo: this.demoMode || house.isDemo,
         })
@@ -511,6 +516,11 @@ export class PostgresCaseRepository implements CaseRepository {
           status: input.status,
           version: sql`${cases.version} + 1`,
           updatedAt: new Date(),
+          ...(input.status === 'awaiting_resident_verification'
+            ? { deadlineStoppedAt: new Date() }
+            : input.status === 'resolved'
+              ? { deadlineStoppedAt: sql`coalesce(${cases.deadlineStoppedAt}, now())` }
+              : input.status === 'disputed' ? { deadlineStoppedAt: null } : {}),
           ...(input.assignee ? { assignee: input.assignee } : {}),
           ...(input.plannedCompletionAt ? { plannedCompletionAt: new Date(input.plannedCompletionAt) } : {}),
           ...(['awaiting_resident_verification', 'resolved', 'disputed'].includes(input.status)
@@ -620,6 +630,12 @@ export class PostgresCaseRepository implements CaseRepository {
 
   private async hydrate(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
     const item = await this.ensureVisible(actor, caseId);
+    const deadline = caseDeadlineDto({
+      policyKey: item.deadlinePolicyKey,
+      startedAt: item.deadlineStartedAt,
+      dueAt: item.deadlineDueAt,
+      stoppedAt: item.deadlineStoppedAt,
+    });
     const [[confirmationCount], [watcherCount], [ownWatch], historyRows, attachmentRows] = await Promise.all([
       this.db
         .select({ value: count() })
@@ -685,6 +701,7 @@ export class PostgresCaseRepository implements CaseRepository {
       ...(item.assignee ? { assignee: item.assignee } : {}),
       ...(item.resultComment ? { resultComment: item.resultComment } : {}),
       ...(item.plannedCompletionAt ? { plannedCompletionAt: item.plannedCompletionAt.toISOString() } : {}),
+      ...(deadline ? { deadline } : {}),
       version: item.version,
       isDemo: item.isDemo,
       createdAt: item.createdAt.toISOString(),

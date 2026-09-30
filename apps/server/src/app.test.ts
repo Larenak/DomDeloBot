@@ -441,6 +441,9 @@ describe('ДомДело API', () => {
     const createdResponse = await app.inject(createRequest);
     expect(createdResponse.statusCode).toBe(201);
     const created = createdResponse.json();
+    expect(created.deadline).toMatchObject({ title: 'Подъезд и двери — 1 сутки' });
+    expect(new Date(created.deadline.dueAt).getTime() - new Date(created.deadline.startedAt).getTime())
+      .toBe(86_400_000);
     const repeatedResponse = await app.inject(createRequest);
     expect(repeatedResponse.json().id).toBe(created.id);
 
@@ -460,6 +463,44 @@ describe('ДомДело API', () => {
       assignee: 'Мастер домофонов Алексей',
       version: 2,
     });
+  });
+
+  it('shows an elapsed-only clock for Other and stops it when the executor reports completion', async () => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    await addDemoHouse(app, 'dispatcher-1');
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/cases',
+      headers: { 'x-demo-user': 'resident-1', 'idempotency-key': 'test-other-elapsed-clock' },
+      payload: {
+        title: 'Повреждено общее имущество',
+        description: 'В общем помещении обнаружено повреждение имущества.',
+        category: 'other',
+        place: 'Общее помещение',
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().deadline).toMatchObject({ title: 'Другое — время в работе' });
+    expect(created.json().deadline.dueAt).toBeUndefined();
+    expect(created.json().deadline.complaintGuideUrl).toBeUndefined();
+
+    const assigned = await app.inject({
+      method: 'PATCH', url: `/api/cases/${created.json().id}/status`,
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'assigned', expectedVersion: 1, assignee: 'Мастер' },
+    });
+    const inProgress = await app.inject({
+      method: 'PATCH', url: `/api/cases/${created.json().id}/status`,
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'in_progress', expectedVersion: assigned.json().version },
+    });
+    const finished = await app.inject({
+      method: 'PATCH', url: `/api/cases/${created.json().id}/status`,
+      headers: { 'x-demo-user': 'dispatcher-1' },
+      payload: { status: 'awaiting_resident_verification', expectedVersion: inProgress.json().version },
+    });
+    expect(finished.json().deadline.stoppedAt).toBeTruthy();
   });
 
   it('shows a dispatcher forecast in the case timeline and clears it after work', async () => {
