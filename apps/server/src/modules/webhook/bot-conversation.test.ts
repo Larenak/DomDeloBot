@@ -116,7 +116,13 @@ describe('MAX bot conversation', () => {
     expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
       type: 'open_app', text: 'Демо: Диспетчер УК', web_app: 'domdelo_bot', payload: 'demo_dispatcher',
     });
-    expect(notifier.messages[0]?.options?.buttons?.flat()).toHaveLength(7);
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toHaveLength(5);
+    expect(notifier.messages[0]?.options?.buttons?.flat()).toContainEqual({
+      type: 'open_app', text: 'Демо: Госорганы', web_app: 'domdelo_bot', payload: 'demo_authority',
+    });
+    expect(notifier.messages[0]?.options?.buttons?.flat().map((button) => button.text)).toEqual([
+      'Демо: Житель', 'Демо: Председатель', 'Демо: Диспетчер УК', 'Демо: Исполнитель', 'Демо: Госорганы',
+    ]);
   });
 
   it('does not store bot photos in a shared published demo house', async () => {

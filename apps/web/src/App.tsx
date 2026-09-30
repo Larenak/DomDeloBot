@@ -2,13 +2,13 @@ import type { UserRole } from '@domdelo/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import { getDemoUser, getPublicDemoRole, getSessionActor, houseApi, setDemoUser, setPublicDemoRole, type DemoUserKey, type PublicDemoRole } from './api.js';
+import { getDemoUser, getPublicDemoRole, getSessionActor, houseApi } from './api.js';
 import { roleHomePath } from './navigation.js';
 import { ErrorState, LoadingState } from './components/StateViews.js';
 import { CaseDetailPage } from './pages/CaseDetailPage.js';
 import { ComplaintDraftPage } from './pages/ComplaintDraftPage.js';
 import { CasesPage } from './pages/CasesPage.js';
-import { DemoPage } from './pages/DemoPage.js';
+import { DemoRoleLaunch } from './components/DemoRoleLaunch.js';
 import { DispatcherPage } from './pages/DispatcherPage.js';
 import { HouseOnboardingPage } from './pages/HouseOnboardingPage.js';
 import { HousesPage } from './pages/HousesPage.js';
@@ -16,22 +16,6 @@ import { NewCasePage } from './pages/NewCasePage.js';
 import { PollsPage } from './pages/PollsPage.js';
 import { ReportsPage } from './pages/ReportsPage.js';
 import { ServicesPage } from './pages/ServicesPage.js';
-
-const demoUsers: Array<{ key: DemoUserKey; label: string }> = [
-  { key: 'resident-1', label: 'Житель · Анна' },
-  { key: 'resident-2', label: 'Житель · Михаил' },
-  { key: 'chair-1', label: 'Председатель · Марина' },
-  { key: 'authority-1', label: 'Муниципалитет · представитель' },
-  { key: 'dispatcher-1', label: 'Диспетчер · Елена' },
-  { key: 'executor-1', label: 'Исполнитель · Илья' },
-];
-
-const publicDemoRoles: Array<{ value: PublicDemoRole; label: string }> = [
-  { value: 'resident', label: 'Житель' },
-  { value: 'chair', label: 'Председатель' },
-  { value: 'dispatcher', label: 'Диспетчер УК' }, { value: 'executor', label: 'Исполнитель' },
-  { value: 'authority', label: 'Госорган' },
-];
 
 function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHouseAvailable: boolean }) {
   const location = useLocation();
@@ -62,10 +46,6 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
   const canCreate = ['resident', 'chair', 'admin'].includes(role);
   const canWatch = ['resident', 'chair'].includes(role);
   const homePath = roleHomePath(role);
-  const switchUser = (value: DemoUserKey) => {
-    setDemoUser(value);
-    window.location.assign(roleHomePath(value.split('-')[0] as UserRole));
-  };
 
   if (!demoMode && !window.WebApp?.initData) {
     return (
@@ -103,29 +83,9 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
           {isWorkRole ? <NavLink to="/">Дела</NavLink> : null}
           <NavLink to="/polls">Опросы</NavLink>
           <NavLink to="/services">О доме</NavLink>
-          {demoHouseAvailable ? <NavLink to="/demo">Демо</NavLink> : null}
           {canReport && !isAuthority ? <NavLink to="/reports">Сводка</NavLink> : null}
 
         </nav>
-        {demoMode && !window.WebApp?.initData ? (
-          <label className="demo-switcher">
-            <span>Демо-роль</span>
-            <select value={selectedUser} onChange={(event) => switchUser(event.target.value as DemoUserKey)}>
-              {demoUsers.map((user) => <option key={user.key} value={user.key}>{user.label}</option>)}
-            </select>
-          </label>
-        ) : isDemoHouse ? (
-          <label className="demo-switcher">
-            <span>Демо-роль</span>
-            <select value={getPublicDemoRole()} onChange={(event) => {
-              const nextRole = event.target.value as PublicDemoRole;
-              setPublicDemoRole(nextRole);
-              window.location.assign(roleHomePath(nextRole));
-            }}>
-              {publicDemoRoles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
-        ) : null}
       </header>
 
       <Routes>
@@ -134,8 +94,8 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
         <Route path="/cases/:caseId" element={<CaseDetailPage demoMode={demoMode} role={role} />} />
         <Route path="/cases/:caseId/complaint" element={<ComplaintDraftPage />} />
         <Route path="/dispatcher" element={<DispatcherPage role={role} />} />
-        <Route path="/houses" element={<HousesPage demoHouseAvailable={demoHouseAvailable} />} />
-        <Route path="/demo" element={<DemoPage demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />} />
+        <Route path="/houses" element={<HousesPage />} />
+        <Route path="/demo" element={<DemoRoleLaunch demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />} />
         <Route path="/polls" element={<PollsPage role={role} />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/services" element={<ServicesPage canCreate={canCreate} canManage={isWorkRole} />} />
@@ -180,9 +140,9 @@ export default function App({ demoMode, demoHouseAvailable = false }: { demoMode
   }
   if (query.data.onboardingRequired) {
     if (location.pathname === '/demo' && demoHouseAvailable) {
-      return <DemoPage demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
+      return <DemoRoleLaunch demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
     }
-    return <HouseOnboardingPage demoHouseAvailable={demoHouseAvailable} />;
+    return <HouseOnboardingPage />;
   }
   return <AppShell demoMode={demoMode} demoHouseAvailable={demoHouseAvailable} />;
 }

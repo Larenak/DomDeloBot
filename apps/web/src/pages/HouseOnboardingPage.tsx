@@ -1,8 +1,7 @@
-import { DemoHouseButton } from '../components/DemoHouseButton.js';
 import { HouseAddressForm } from '../components/HouseAddressForm.js';
 import { InviteRegistrationForm } from '../components/InviteRegistrationForm.js';
 
-export function HouseOnboardingPage({ demoHouseAvailable }: { demoHouseAvailable: boolean }) {
+export function HouseOnboardingPage() {
   return (
     <main className="address-onboarding">
       <section className="address-onboarding__intro">
@@ -18,7 +17,6 @@ export function HouseOnboardingPage({ demoHouseAvailable }: { demoHouseAvailable
       <section className="form-card address-onboarding__form">
         <h2>Адрес дома</h2>
         <HouseAddressForm />
-        {demoHouseAvailable ? <DemoHouseButton /> : null}
       </section>
       <InviteRegistrationForm />
     </main>

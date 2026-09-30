@@ -27,7 +27,7 @@ const demoUsers = [
   { id: '88888888-8888-4888-8888-888888888888', displayName: 'Мария Волкова', role: 'resident' as const },
   { id: '99999999-9999-4999-8999-999999999999', displayName: 'Алексей Морозов', role: 'resident' as const },
   { id: '30303030-3030-4030-8030-303030303030', displayName: 'Марина, председатель совета дома', role: 'chair' as const },
-  { id: '40404040-4040-4040-8040-404040404040', displayName: 'Представитель муниципалитета', role: 'authority' as const },
+  { id: '40404040-4040-4040-8040-404040404040', displayName: 'Представитель госорганов', role: 'authority' as const },
 ];
 
 const config = loadConfig();

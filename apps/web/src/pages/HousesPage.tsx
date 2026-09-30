@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { houseApi } from '../api.js';
-import { DemoHouseButton } from '../components/DemoHouseButton.js';
 import { HouseAddressForm } from '../components/HouseAddressForm.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 
-export function HousesPage({ demoHouseAvailable = false }: { demoHouseAvailable?: boolean }) {
+export function HousesPage() {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['house-context'], queryFn: houseApi.context });
   const select = useMutation({
@@ -86,7 +85,6 @@ export function HousesPage({ demoHouseAvailable = false }: { demoHouseAvailable?
       <section className="form-card houses-add-card">
         <h2>Добавить ещё один дом</h2>
         <HouseAddressForm compact />
-        {demoHouseAvailable ? <DemoHouseButton /> : null}
       </section>
     </main>
   );

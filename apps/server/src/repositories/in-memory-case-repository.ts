@@ -52,7 +52,7 @@ export const demoActors: Record<string, AuthenticatedActor> = {
     id: '40404040-4040-4040-8040-404040404040',
     role: 'authority',
     houseId: DEMO_HOUSE_ID,
-    displayName: 'Представитель муниципалитета',
+    displayName: 'Представитель госорганов',
   },
   'dispatcher-1': {
     id: '44444444-4444-4444-8444-444444444444',

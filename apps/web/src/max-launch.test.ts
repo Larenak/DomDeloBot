@@ -12,6 +12,8 @@ describe('MAX launch payload', () => {
   it('opens the selected demo role without accepting arbitrary paths', () => {
     expect(pathFromMaxStartParam('demo_dispatcher')).toBe('/demo?role=dispatcher');
     expect(pathFromMaxStartParam('demo_admin')).toBeUndefined();
+    expect(pathFromMaxStartParam('demo_owner')).toBeUndefined();
+    expect(pathFromMaxStartParam('demo_tenant')).toBeUndefined();
   });
 
   it('ignores an unknown or unsafe payload', () => {

@@ -20,7 +20,9 @@ docker compose up --build
 OpenAPI UI: `http://localhost:8080/docs`  
 Health: `http://localhost:8080/health/ready`
 
-Для остановки: `docker compose down`. Данные сохраняются в именованных volumes. Для полного удаления тестовых данных используется отдельная явная команда `docker compose down -v`.
+Compose при старте применяет миграции и загружает синтетические демонстрационные данные. Для остановки без удаления данных выполните `docker compose down`; повторный `docker compose up --build` использует те же volumes. Удалить тестовую базу и файлы можно только отдельной командой `docker compose down -v`.
+
+Перед первым запуском создайте `.env` из `.env.example` и задайте случайные значения `POSTGRES_PASSWORD`, `S3_SECRET_ACCESS_KEY` и `SESSION_SECRET`. Не используйте рабочие секреты в локальном демо. Переменные и их назначение перечислены ниже.
 
 ## Локальный demo-режим без Docker
 
@@ -82,6 +84,34 @@ pnpm dev:web
 - Nginx reverse proxy и единый Dockerfile с targets `server`/`web`.
 
 Подробнее: [docs/architecture.md](docs/architecture.md).
+
+## Зависимости, окружение и порты
+
+Для локального запуска всего контура нужны Docker Engine/Desktop с Docker Compose. Dockerfile закрепляет Node.js `24.21.0`, pnpm `11.25.0` и production-зависимости; точные версии библиотек зафиксированы в `pnpm-lock.yaml`. Для запуска без Docker нужны Node.js `>=24.19.0 <25` и pnpm `11.25.0`.
+
+| Порт | Доступность | Назначение |
+|---|---|---|
+| `8080` | хост | Веб-приложение, API, webhook и `/docs` через Nginx |
+| `3000` | только сеть Compose; при dev-запуске доступен локально | Backend API и бот |
+| `5432` | только сеть Compose | PostgreSQL |
+| `9000`, `9001` | только сеть Compose | S3 API и консоль MinIO |
+| `5173` | хост, только `pnpm dev:web` | Vite dev-сервер мини-приложения |
+
+Переменные берутся из `.env.example`. Для Compose обязательны:
+
+| Переменная | Назначение |
+|---|---|
+| `POSTGRES_PASSWORD` | Пароль локальной PostgreSQL и соединения приложения с ней |
+| `S3_SECRET_ACCESS_KEY` | Секрет локального MinIO |
+| `SESSION_SECRET` | Подпись сессий приложения |
+
+В `.env.example` перечислены все параметры окружения: `NODE_ENV`, `PORT`, `PUBLIC_BASE_URL`, `MAX_MINI_APP_URL`, `MAX_MINI_APP_BOT_USERNAME`, `DATABASE_URL`, `POSTGRES_PASSWORD`, `MAX_API_BASE_URL`, `MAX_BOT_TOKEN`, `MAX_WEBHOOK_SECRET`, `DADATA_API_KEY`, `MAX_DELIVERY_MODE`, `MAX_POLLING_REMOVE_WEBHOOKS`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`, `SESSION_SECRET`, `LOG_LEVEL`, `DEMO_MODE`, `STORAGE_MODE`, `OBJECT_STORAGE_MODE`, `SERVE_WEB`, `HACKATHON_HOUSE_ID` и `HACKATHON_HOUSE_ADDRESS`. Для настоящего бота задайте `MAX_BOT_TOKEN`, `MAX_WEBHOOK_SECRET`, публичный HTTPS `PUBLIC_BASE_URL`, HTTPS `MAX_MINI_APP_URL` и `MAX_MINI_APP_BOT_USERNAME`. Для поиска новых реальных адресов на hosted-стенде нужен `DADATA_API_KEY`; локальный Compose использует синтетический seed и сервисы PostgreSQL/MinIO по внутренним именам `postgres` и `minio`. Compose также читает `DATABASE_URL`, `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_FORCE_PATH_STYLE`, `MAX_API_BASE_URL`, `MAX_DELIVERY_MODE`, `LOG_LEVEL`, `DEMO_MODE` и `STORAGE_MODE`. `MAX_POLLING_REMOVE_WEBHOOKS`, `OBJECT_STORAGE_MODE`, `SERVE_WEB`, `HACKATHON_HOUSE_ID` и `HACKATHON_HOUSE_ADDRESS` нужны для соответствующих polling, hosted или демонстрационных режимов. Секреты не передаются во frontend; не заполняйте рабочими значениями `.env.example` и не коммитьте `.env`.
+
+## Внешние сервисы и данные
+
+Для обработки реальных сообщений MAX необходимы бот, выданный MAX токен, webhook на публичном HTTPS-адресе и привязка Mini App к тому же боту. Для локальной проверки внутри MAX используется `pnpm dev:max` и временный HTTPS-туннель; это не постоянный адрес и не production-стенд. DaData используется только для подсказок адресов и серверной проверки кода дома по ГАР. Локальный контур хранит фото в MinIO, а hosted-конфигурация может использовать S3-совместимое хранилище либо небольшие фотографии в PostgreSQL.
+
+Интеграций с реальными УК, ГИС ЖКХ и муниципальными системами нет: передача в очередь УК в MVP является внутренним демонстрационным действием. Начальные дома, учетные записи и дела синтетические; при старте Compose они загружаются seed-скриптом в PostgreSQL. Не используйте в демодоме реальные персональные данные или документы. После перезапуска контейнеров записи и фотографии сохраняются в именованных volumes. Подробнее о ролях, источниках данных и ограничениях: [docs/registration.md](docs/registration.md) и [docs/architecture.md](docs/architecture.md).
 
 ## Конфигурация MAX
 
@@ -199,6 +229,15 @@ pnpm openapi:export
 ```
 
 Фактический контракт: [docs/openapi.yaml](docs/openapi.yaml). Карта проверок и demo-данных: [docs/DATA-API.yaml](docs/DATA-API.yaml).
+
+### Пошаговая проверка и ожидаемый результат
+
+1. Скопируйте `.env.example` в `.env`, задайте три обязательных локальных секрета и запустите весь локальный контур одной командой: `docker compose up --build`.
+2. Дождитесь готовности сервисов, откройте `http://localhost:8080` и пройдите основной сценарий из [docs/testing-scenario.md](docs/testing-scenario.md). Для проверки полного чатового потока в MAX следуйте разделу «Локальный запуск мини-приложения внутри MAX» выше.
+3. В синтетическом доме житель создаёт дело с описанием и фото. При достижении порога подтверждений разных пользователей дело появляется во внутренней очереди диспетчера; повторное подтверждение тем же аккаунтом счётчик не увеличивает. Диспетчер назначает исполнителя и меняет статусы по графу, исполнитель прикладывает фото результата, житель подтверждает результат или оспаривает его.
+4. Для устойчивости повторите webhook-событие и запрос создания дела с теми же идентификаторами: дубль не должен создаваться. Ошибочное изменение статуса отклоняется, а после временной ошибки пользователь может повторить действие. Весь расширенный список шагов и ожидаемых ответов приведён в [docs/testing-scenario.md](docs/testing-scenario.md).
+
+Остановка выполняется через `docker compose down`, повторный запуск — снова `docker compose up --build`. Команда с `-v` удаляет демо-данные и нужна только для полного сброса локального стенда.
 
 ## Безопасность и данные
 

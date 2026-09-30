@@ -219,9 +219,9 @@ export class BotConversationService {
       }
       this.drafts.delete(key);
       const roles: Array<[string, string]> = [
-        ['resident', 'Житель'], ['owner', 'Собственник'], ['tenant', 'Арендатор'],
+        ['resident', 'Житель'],
         ['chair', 'Председатель'], ['dispatcher', 'Диспетчер УК'],
-        ['executor', 'Исполнитель'], ['authority', 'Муниципалитет'],
+        ['executor', 'Исполнитель'], ['authority', 'Госорганы'],
       ];
       const buttons = roles.flatMap(([role, label]) => {
         const button = this.miniAppButton(`Демо: ${label}`, `/demo?role=${role}`, `demo_${role}`);

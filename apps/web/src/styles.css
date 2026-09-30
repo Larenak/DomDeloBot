@@ -132,8 +132,6 @@ a { color: inherit; text-decoration: none; }
 .brand strong, .brand small { display: block; }
 .brand strong { font-size: 17px; letter-spacing: -.2px; }
 .brand small { margin-top: 2px; color: var(--muted); font-size: 11px; }
-.demo-switcher { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; color: var(--muted); font-size: 12px; }
-.demo-switcher select { width: 210px; min-width: 0; }
 .house-switcher { display: flex; align-items: center; gap: 9px; flex: 1 1 250px; min-width: 0; color: var(--muted); font-size: 12px; }
 .house-switcher select { width: 100%; max-width: 290px; min-width: 0; }
 
@@ -150,7 +148,6 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 20px 44px rgba(18, 107, 213, .22);
 }
 .hero--dispatcher { background: linear-gradient(135deg, #1c2946, #274a7b 60%, #236f91); }
-.hero--demo { background: linear-gradient(135deg, #25345f, #3457a0 60%, #497fb4); }
 .hero h1 { margin: 10px 0 8px; font-size: clamp(32px, 5vw, 52px); line-height: 1; letter-spacing: -1.7px; }
 .hero p { max-width: 610px; margin: 0; color: var(--hero-caption); font-size: 16px; line-height: 1.55; }
 .hero .eyebrow { color: var(--hero-eyebrow); }
@@ -348,12 +345,11 @@ label input, label select, label textarea { display: block; margin-top: 7px; fon
   .app-shell { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
   .topbar { min-height: 62px; padding: 10px 16px; }
   .brand__mark { width: 38px; height: 38px; border-radius: 13px; }
-  .brand small, .demo-switcher > span { display: none; }
+  .brand small { display: none; }
   .house-switcher { order: 3; width: 100%; margin: 2px 0 0; }
   .house-switcher > span { display: none; }
   .house-switcher select { max-width: none; min-width: 0; min-height: 38px; font-size: 11px; }
   .topbar { flex-wrap: wrap; }
-  .demo-switcher select { min-width: 0; max-width: 150px; min-height: 38px; font-size: 11px; }
   .page, .page--narrow, .page--detail { width: 100%; padding: 16px 12px 24px; }
   .hero { min-height: 205px; padding: 26px 22px; border-radius: 23px; align-items: flex-start; flex-direction: column; gap: 20px; }
   .hero h1 { margin-top: 8px; font-size: 36px; }
@@ -432,17 +428,8 @@ label input, label select, label textarea { display: block; margin-top: 7px; fon
 .service-status { color: var(--orange); font-weight: 700; }
 @media (max-width: 720px) { .service-grid { grid-template-columns: 1fr; } }
 
-.demo-house-entry { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-.demo-house-entry p { color: var(--muted); font-size: 14px; line-height: 1.5; }
 
 .demo-warning { padding: 12px 15px; border-radius: 12px; background: var(--warning-surface); color: var(--warning-ink); line-height: 1.5; }
-.demo-role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
-.demo-role-card { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 190px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
-.demo-role-card--selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(22,119,255,.12); }
-.demo-role-card h2 { margin: 0 0 8px; font-size: 19px; }
-.demo-role-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.demo-steps { display: grid; gap: 9px; padding-left: 24px; color: var(--muted); line-height: 1.5; }
-@media (max-width: 720px) { .demo-role-grid { grid-template-columns: 1fr; } .demo-role-card { min-height: 0; } }
 
 .service-facts { padding-left: 20px; color: var(--ink-secondary); font-size: 13px; line-height: 1.5; }
 .service-facts li + li { margin-top: 7px; }
