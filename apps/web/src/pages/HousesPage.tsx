@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { houseApi } from '../api.js';
 import { DemoHouseButton } from '../components/DemoHouseButton.js';
 import { HouseAddressForm } from '../components/HouseAddressForm.js';
-import { InviteRegistrationForm } from '../components/InviteRegistrationForm.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 
 export function HousesPage({ demoHouseAvailable = false }: { demoHouseAvailable?: boolean }) {
@@ -89,7 +88,6 @@ export function HousesPage({ demoHouseAvailable = false }: { demoHouseAvailable?
         <HouseAddressForm compact />
         {demoHouseAvailable ? <DemoHouseButton /> : null}
       </section>
-      <InviteRegistrationForm />
     </main>
   );
 }

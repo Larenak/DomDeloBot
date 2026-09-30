@@ -8,7 +8,7 @@ import { createSessionToken, verifySessionToken } from './session.js';
 import { validateMaxInitData } from './max-init-data.js';
 import { redeemHouseInvite } from './house-invites.js';
 
-const publicDemoRoles = new Set<UserRole>(['resident', 'owner', 'tenant', 'chair', 'dispatcher', 'executor', 'authority']);
+const publicDemoRoles = new Set<UserRole>(['resident', 'chair', 'dispatcher', 'executor', 'authority']);
 
 export async function registerAuth(app: FastifyInstance, db?: Database): Promise<void> {
   app.get('/api/public-config', async () => ({

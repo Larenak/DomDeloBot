@@ -29,14 +29,14 @@ function PollCard({ poll, canVote }: { poll: PollDto; canVote: boolean }) {
       ))}
     </div>
     <p className="muted">Ответов: {poll.totalVotes}. {poll.myOptionId ? 'Ваш ответ сохранён.' :
-      closed ? 'Опрос завершён.' : canVote ? 'Можно выбрать один вариант.' : 'Ответ доступен подтверждённому собственнику.'}</p>
+      closed ? 'Опрос завершён.' : canVote ? 'Можно выбрать один вариант.' : 'Ответ доступен жителю или председателю дома.'}</p>
     {vote.isError ? <p className="form-error">{vote.error.message}</p> : null}
   </article>;
 }
 
 export function PollsPage({ role }: { role: UserRole }) {
   const canCreate = role === 'chair' || role === 'admin';
-  const canVote = role === 'owner' || role === 'chair';
+  const canVote = role === 'resident' || role === 'chair';
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ['polls'], queryFn: pollApi.list });
   const [question, setQuestion] = useState('');
@@ -57,7 +57,7 @@ export function PollsPage({ role }: { role: UserRole }) {
   return <main className="page">
     <section className="hero"><div><span className="eyebrow">Мнение дома</span>
       <h1>Благоустройство</h1>
-      <p>Председатель спрашивает мнение собственников. Результат не заменяет официальное ОСС.</p>
+      <p>Председатель спрашивает мнение жителей. Результат не заменяет официальное ОСС.</p>
     </div></section>
     {canCreate ? <section className="content-card">
       <h2>Новый опрос</h2>

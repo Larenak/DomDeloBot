@@ -1,0 +1,1 @@
+ALTER TABLE "chat_management_checks" ADD COLUMN "action_notice_key" text;

@@ -26,8 +26,6 @@ const demoUsers = [
   { id: '77777777-7777-4777-8777-777777777777', displayName: 'Павел Орлов', role: 'resident' as const },
   { id: '88888888-8888-4888-8888-888888888888', displayName: 'Мария Волкова', role: 'resident' as const },
   { id: '99999999-9999-4999-8999-999999999999', displayName: 'Алексей Морозов', role: 'resident' as const },
-  { id: '10101010-1010-4010-8010-101010101010', displayName: 'Ольга, собственник', role: 'owner' as const },
-  { id: '20202020-2020-4020-8020-202020202020', displayName: 'Денис, арендатор', role: 'tenant' as const },
   { id: '30303030-3030-4030-8030-303030303030', displayName: 'Марина, председатель совета дома', role: 'chair' as const },
   { id: '40404040-4040-4040-8040-404040404040', displayName: 'Представитель муниципалитета', role: 'authority' as const },
 ];

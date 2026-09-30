@@ -14,6 +14,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+// Legacy enum values remain for existing databases; public roles are defined in the domain.
 export const userRoleEnum = pgEnum('user_role', [
   'resident',
   'owner',
@@ -322,4 +323,5 @@ export const chatManagementChecks = pgTable('chat_management_checks', {
   presence: text('presence'),
   missingNoticeId: text('missing_notice_id'),
   previousRemovedRevision: integer('previous_removed_revision').notNull().default(0),
+  actionNoticeKey: text('action_notice_key'),
 });

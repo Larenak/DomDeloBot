@@ -185,12 +185,6 @@ paths:
                           - resident
                       - type: string
                         enum:
-                          - owner
-                      - type: string
-                        enum:
-                          - tenant
-                      - type: string
-                        enum:
                           - chair
                       - type: string
                         enum:
@@ -282,12 +276,6 @@ paths:
                       - type: string
                         enum:
                           - resident
-                      - type: string
-                        enum:
-                          - owner
-                      - type: string
-                        enum:
-                          - tenant
                       - type: string
                         enum:
                           - chair
@@ -404,12 +392,6 @@ paths:
                           - resident
                       - type: string
                         enum:
-                          - owner
-                      - type: string
-                        enum:
-                          - tenant
-                      - type: string
-                        enum:
                           - chair
                       - type: string
                         enum:
@@ -515,12 +497,6 @@ paths:
                           - resident
                       - type: string
                         enum:
-                          - owner
-                      - type: string
-                        enum:
-                          - tenant
-                      - type: string
-                        enum:
                           - chair
                       - type: string
                         enum:
@@ -624,12 +600,6 @@ paths:
                       - type: string
                         enum:
                           - resident
-                      - type: string
-                        enum:
-                          - owner
-                      - type: string
-                        enum:
-                          - tenant
                       - type: string
                         enum:
                           - chair

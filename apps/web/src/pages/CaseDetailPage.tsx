@@ -40,7 +40,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
     onSuccess: invalidate,
   });
 
-  const isResidentRole = ['resident', 'owner', 'tenant', 'chair'].includes(role);
+  const isResidentRole = ['resident', 'chair'].includes(role);
 
   const onFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

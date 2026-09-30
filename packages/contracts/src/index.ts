@@ -12,8 +12,6 @@ export const CaseStatusSchema = Type.Union([
 
 export const UserRoleSchema = Type.Union([
   Type.Literal('resident'),
-  Type.Literal('owner'),
-  Type.Literal('tenant'),
   Type.Literal('chair'),
   Type.Literal('dispatcher'),
   Type.Literal('executor'),

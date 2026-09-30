@@ -17,15 +17,17 @@ const SESSION_KEY = 'domdelo.session';
 const ACTOR_KEY = 'domdelo.actor';
 const PUBLIC_DEMO_ROLE_KEY = 'domdelo.publicDemoRole';
 
-export type PublicDemoRole = 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority';
+export type PublicDemoRole = 'resident' | 'chair' | 'dispatcher' | 'executor' | 'authority';
 export function getPublicDemoRole(): PublicDemoRole {
-  return (localStorage.getItem(PUBLIC_DEMO_ROLE_KEY) as PublicDemoRole | null) || 'resident';
+  const role = localStorage.getItem(PUBLIC_DEMO_ROLE_KEY);
+  return ['resident', 'chair', 'dispatcher', 'executor', 'authority'].includes(role ?? '')
+    ? role as PublicDemoRole : 'resident';
 }
 export function setPublicDemoRole(role: PublicDemoRole): void {
   localStorage.setItem(PUBLIC_DEMO_ROLE_KEY, role);
 }
 
-type SessionActor = { id: string; role: 'resident' | 'owner' | 'tenant' | 'chair' | 'dispatcher' | 'executor' | 'authority' | 'admin'; houseId?: string; displayName: string; maxUserId?: string };
+type SessionActor = { id: string; role: 'resident' | 'chair' | 'dispatcher' | 'executor' | 'authority' | 'admin'; houseId?: string; displayName: string; maxUserId?: string };
 
 export function getSessionActor(): SessionActor | null {
   try {
@@ -42,10 +44,12 @@ export async function getPublicConfig(): Promise<{ demoMode: boolean; demoHouseA
   return response.json() as Promise<{ demoMode: boolean; demoHouseAvailable?: boolean }>;
 }
 
-export type DemoUserKey = 'resident-1' | 'resident-2' | 'owner-1' | 'tenant-1' | 'chair-1' | 'authority-1' | 'dispatcher-1' | 'executor-1';
+export type DemoUserKey = 'resident-1' | 'resident-2' | 'chair-1' | 'authority-1' | 'dispatcher-1' | 'executor-1';
 
 export function getDemoUser(): DemoUserKey {
-  return (localStorage.getItem(DEMO_USER_KEY) as DemoUserKey | null) || 'resident-1';
+  const user = localStorage.getItem(DEMO_USER_KEY);
+  return ['resident-1', 'resident-2', 'chair-1', 'authority-1', 'dispatcher-1', 'executor-1'].includes(user ?? '')
+    ? user as DemoUserKey : 'resident-1';
 }
 
 export function setDemoUser(value: DemoUserKey): void {

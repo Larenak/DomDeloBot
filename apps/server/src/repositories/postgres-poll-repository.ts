@@ -47,8 +47,8 @@ export class PostgresPollRepository implements PollRepository {
   }
 
   async vote(actor: AuthenticatedActor, pollId: string, optionId: string): Promise<PollDto> {
-    if (!['owner', 'chair'].includes(actor.role)) {
-      throw new ForbiddenError('Голосовать может только подтверждённый собственник');
+    if (!['resident', 'chair'].includes(actor.role)) {
+      throw new ForbiddenError('Ответить на опрос может житель или председатель дома');
     }
     const [poll] = await this.db.select({ closesAt: polls.closesAt })
       .from(polls).where(and(eq(polls.id, pollId), eq(polls.houseId, activeHouseId(actor)))).limit(1);
