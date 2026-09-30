@@ -22,14 +22,17 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const deleted = useRef(false);
   const [uploadKind, setUploadKind] = useState<'problem' | 'result'>('problem');
-  const query = useQuery({ queryKey: ['case', caseId], queryFn: () => caseApi.get(caseId) });
+  const query = useQuery({ queryKey: ['case', caseId], queryFn: () => caseApi.get(caseId), refetchInterval: 15_000 });
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['case', caseId] }),
       queryClient.invalidateQueries({ queryKey: ['cases'] }),
     ]);
   };
-  const confirm = useMutation({ mutationFn: () => caseApi.confirm(caseId), onSuccess: invalidate });
+  const confirm = useMutation({ mutationFn: () => caseApi.confirm(caseId), onSuccess: (updated) => {
+    queryClient.setQueryData(['case', caseId], updated);
+    void queryClient.invalidateQueries({ queryKey: ['cases'] });
+  } });
   const watch = useMutation({
     mutationFn: (isWatched: boolean) => isWatched ? caseApi.unwatch(caseId) : caseApi.watch(caseId),
     onSuccess: invalidate,
@@ -80,12 +83,6 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
 
   const item = query.data;
   const residentTransitions = getAvailableTransitions(item.status, 'resident');
-  const galleryAttachments = item.attachments.length ? item.attachments : item.isDemo ? [{
-    id: '70707070-7070-4070-8070-707070707070', kind: 'problem' as const,
-    url: '/demo-problem.svg', fileName: 'Учебная иллюстрация', mimeType: 'image/svg+xml',
-    createdAt: item.createdAt,
-  }] : [];
-
   return (
     <main className="page page--detail">
       <Link className="back-link" to={isResidentRole ? '/' : '/dispatcher'}>← Назад к списку</Link>
@@ -119,15 +116,30 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
           <div><strong>{item.confirmationsCount}</strong><span>подтвердили</span></div>
           <div><strong>{item.watchersCount}</strong><span>следят</span></div>
         </div>
-        {isResidentRole ? <Link className="button button--secondary" to={`/cases/${item.id}/complaint`}>Составить обращение</Link> : null}
+        <div className={item.submission.sentAt ? 'submission-panel submission-panel--sent' : 'submission-panel'} role="status">
+          {item.submission.sentAt ? (
+            <>
+              <strong>✓ Дело успешно отправлено диспетчеру УК</strong>
+              <p>Демонстрационная отправка в очередь УК · {formatDateTime(item.submission.sentAt)}</p>
+              <p>Подтверждений: {item.confirmationsCount} из {item.submission.requiredConfirmations} необходимых.</p>
+            </>
+          ) : (
+            <>
+              <strong>Подтверждений для отправки в УК: {item.confirmationsCount} из {item.submission.requiredConfirmations}</strong>
+              <progress value={Math.min(item.confirmationsCount, item.submission.requiredConfirmations)} max={item.submission.requiredConfirmations} aria-label="Подтверждения для отправки в УК" />
+              <p>Нужно ещё {Math.max(0, item.submission.requiredConfirmations - item.confirmationsCount)}. Автор уже учтён.</p>
+              <p>В доме зарегистрировано аккаунтов: {item.submission.registeredAccounts}. Порог — 10%, округлённые вверх, минимум 2. Правило действует и для срочных дел.</p>
+            </>
+          )}
+        </div>
         {isResidentRole ? (
           <div className="action-row">
             <button
               className="button button--primary"
-              disabled={confirm.isPending}
+              disabled={confirm.isPending || item.isConfirmed}
               onClick={() => confirm.mutate()}
             >
-              У меня тоже
+              {item.isConfirmed ? '✓ Вы подтвердили проблему' : confirm.isPending ? 'Подтверждаем…' : 'У меня тоже'}
             </button>
             <button
               className="button button--secondary"
@@ -138,6 +150,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
             </button>
           </div>
         ) : null}
+        {confirm.isError ? <p className="form-error" role="alert">{confirm.error.message}</p> : null}
         {watch.isError ? <p className="form-error">{watch.error.message}</p> : null}
       </section>
 
@@ -168,7 +181,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
         <div className="section-heading section-heading--inside">
           <div><h2>Фотографии</h2><p>Доказательства проблемы и результата</p></div>
         </div>
-        {galleryAttachments.length ? <PhotoGallery attachments={galleryAttachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
+        {item.attachments.length ? <PhotoGallery attachments={item.attachments} /> : <p className="muted-box">Фотографий пока нет.</p>}
         {(demoMode || !item.isDemo) ? <div className="upload-row">
           <select value={uploadKind} onChange={(event) => setUploadKind(event.target.value as 'problem' | 'result')}>
             <option value="problem">Фото проблемы</option>

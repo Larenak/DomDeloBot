@@ -8,6 +8,7 @@ import type {
 } from '@domdelo/contracts';
 import {
   assertTransitionAllowed,
+  requiredCaseConfirmations,
   openCaseStatuses,
   type CaseStatus,
 } from '@domdelo/domain';
@@ -82,6 +83,8 @@ function seedCases(): CaseDto[] {
       place: 'Лестничная клетка',
       status: 'registered',
       confirmationsCount: 6,
+      isConfirmed: false,
+      submission: { requiredConfirmations: 2, registeredAccounts: 6, sentAt: iso(190), mode: 'demo' },
       watchersCount: 4,
       isWatched: false,
       canDelete: false,
@@ -112,6 +115,8 @@ function seedCases(): CaseDto[] {
       place: 'Входная дверь',
       status: 'in_progress',
       confirmationsCount: 3,
+      isConfirmed: false,
+      submission: { requiredConfirmations: 2, registeredAccounts: 6, sentAt: iso(1440), mode: 'demo' },
       watchersCount: 5,
       isWatched: false,
       canDelete: false,
@@ -343,7 +348,11 @@ export class InMemoryCaseRepository implements CaseRepository {
     if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
     const houseId = activeHouseId(actor);
     return this.items
-      .filter((item) => item.houseId === houseId && (!status || item.status === status))
+      .filter((item) => {
+        if (item.houseId !== houseId) return false;
+        this.releaseIfConfirmed(item);
+        return (!['dispatcher', 'executor'].includes(actor.role) || item.status !== 'draft') && (!status || item.status === status);
+      })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((item) => this.viewCase(actor, item));
   }
@@ -354,7 +363,11 @@ export class InMemoryCaseRepository implements CaseRepository {
     }
     const houseId = activeHouseId(actor);
     return makeHouseReport(houseId, this.houses.get(houseId)?.address ?? DEMO_ADDRESS,
-      this.items.filter((item) => item.houseId === houseId));
+      this.items.filter((item) => {
+        if (item.houseId !== houseId) return false;
+        this.releaseIfConfirmed(item);
+        return actor.role !== 'dispatcher' || item.status !== 'draft';
+      }));
   }
 
   async getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
@@ -390,6 +403,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       .filter(
         (item) =>
           item.houseId === houseId &&
+          (!['dispatcher', 'executor'].includes(actor.role) || item.status !== 'draft') &&
           openCaseStatuses.includes(item.status) &&
           item.category === input.category &&
           (!input.entrance || !item.entrance || item.entrance === input.entrance),
@@ -425,12 +439,6 @@ export class InMemoryCaseRepository implements CaseRepository {
     if (existingId) return this.getCase(actor, existingId);
 
     const createdAt = new Date().toISOString();
-    const deadline = startCaseDeadline(input.category, new Date(createdAt));
-    const deadlineDto = caseDeadlineDto({
-      policyKey: deadline.policyKey,
-      startedAt: deadline.startedAt,
-      dueAt: deadline.dueAt,
-    });
     const item: CaseDto = {
       id: randomUUID(),
       number: Math.max(0, ...this.items.map((candidate) => candidate.number)) + 1,
@@ -440,8 +448,9 @@ export class InMemoryCaseRepository implements CaseRepository {
       category: input.category,
       ...(input.entrance ? { entrance: input.entrance } : {}),
       place: input.place,
-      status: 'registered',
-      ...(deadlineDto ? { deadline: deadlineDto } : {}),
+      status: 'draft',
+      submission: { requiredConfirmations: requiredCaseConfirmations(this.registeredAccounts(houseId)), registeredAccounts: this.registeredAccounts(houseId), mode: 'demo' },
+      isConfirmed: true,
       confirmationsCount: 1,
       watchersCount: 1,
       isWatched: true,
@@ -454,9 +463,9 @@ export class InMemoryCaseRepository implements CaseRepository {
       history: [
         {
           id: randomUUID(),
-          toStatus: 'registered',
+          toStatus: 'draft',
           actorName: actor.displayName,
-          comment: 'Дело зарегистрировано',
+          comment: 'Дело размещено. Собираем подтверждения жителей',
           createdAt,
         },
       ],
@@ -479,6 +488,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       item.confirmationsCount += 1;
       item.updatedAt = new Date().toISOString();
     }
+    this.releaseIfConfirmed(item);
     return this.viewCase(actor, item);
   }
 
@@ -512,6 +522,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     if (item.version !== input.expectedVersion) {
       throw new ConflictError('Карточка уже изменилась. Обновите данные и повторите действие.');
     }
+    if (item.status === 'draft') throw new ForbiddenError('Сначала нужны подтверждения жителей');
     assertTransitionAllowed(item.status, input.status, actor.role);
     assertAcceptableCaseText({ 'Исполнитель': input.assignee, 'Комментарий': input.comment });
     if (input.status === 'assigned' && !input.assignee?.trim()) {
@@ -587,6 +598,27 @@ export class InMemoryCaseRepository implements CaseRepository {
     return true;
   }
 
+  private registeredAccounts(houseId: string): number {
+    return [...this.favoriteHouses.values()].filter((houses) => houses.has(houseId)).length;
+  }
+
+  private releaseIfConfirmed(item: CaseDto): void {
+    if (item.status !== 'draft') return;
+    const required = requiredCaseConfirmations(this.registeredAccounts(item.houseId));
+    item.submission.requiredConfirmations = required;
+    if (item.confirmationsCount < required) return;
+    const sentAt = new Date().toISOString();
+    item.status = 'registered';
+    item.submission.sentAt = sentAt;
+    item.version += 1;
+    item.updatedAt = sentAt;
+    const deadline = startCaseDeadline(item.category, new Date(sentAt));
+    const deadlineDto = caseDeadlineDto({ policyKey: deadline.policyKey, startedAt: deadline.startedAt, dueAt: deadline.dueAt });
+    if (deadlineDto) item.deadline = deadlineDto;
+    item.history.push({ id: randomUUID(), fromStatus: 'draft', toStatus: 'registered', actorName: 'ДомДело',
+      comment: 'Дело успешно отправлено диспетчеру УК (демонстрационный режим)', createdAt: sentAt });
+  }
+
   private getMutable(actor: AuthenticatedActor, caseId: string): CaseDto {
     const houseId = activeHouseId(actor);
     if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
@@ -594,11 +626,16 @@ export class InMemoryCaseRepository implements CaseRepository {
     if (!item || item.houseId !== houseId) {
       throw new NotFoundError('Дело не найдено');
     }
+    this.releaseIfConfirmed(item);
+    if (item.status === 'draft' && ['dispatcher', 'executor'].includes(actor.role)) {
+      throw new NotFoundError('Дело ещё не отправлено диспетчеру');
+    }
     return item;
   }
 
   private viewCase(actor: AuthenticatedActor, item: CaseDto): CaseDto {
-    const started = startCaseDeadline(item.category, new Date(item.createdAt));
+    this.releaseIfConfirmed(item);
+    const started = startCaseDeadline(item.category, new Date(item.submission.sentAt ?? item.createdAt));
     const fallbackDeadline = caseDeadlineDto({
       policyKey: started.policyKey,
       startedAt: started.startedAt,
@@ -607,7 +644,9 @@ export class InMemoryCaseRepository implements CaseRepository {
     });
     return {
       ...structuredClone(item),
-      ...(item.deadline ? {} : fallbackDeadline ? { deadline: fallbackDeadline } : {}),
+      ...(item.status === 'draft' || item.deadline ? {} : fallbackDeadline ? { deadline: fallbackDeadline } : {}),
+      isConfirmed: this.confirmations.has(`${item.id}:${actor.id}`),
+      submission: { ...item.submission, registeredAccounts: this.registeredAccounts(item.houseId), requiredConfirmations: item.submission.sentAt ? item.submission.requiredConfirmations : requiredCaseConfirmations(this.registeredAccounts(item.houseId)) },
       isWatched: this.watchers.has(`${item.id}:${actor.id}`),
       canDelete: this.authors.get(item.id) === actor.id,
     };

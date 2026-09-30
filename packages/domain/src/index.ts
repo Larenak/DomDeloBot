@@ -27,7 +27,7 @@ export class WorkflowError extends Error {
 }
 
 const allowedTransitions: Record<CaseStatus, readonly CaseStatus[]> = {
-  draft: ['registered'],
+  draft: [],
   registered: ['assigned'],
   assigned: ['in_progress'],
   in_progress: ['awaiting_resident_verification'],
@@ -68,7 +68,7 @@ export const openCaseStatuses: readonly CaseStatus[] = caseStatuses.filter(
 );
 
 export const caseStatusLabels: Record<CaseStatus, string> = {
-  draft: 'Черновик',
+  draft: 'Собираем подтверждения',
   registered: 'Зарегистрировано',
   assigned: 'Назначен исполнитель',
   in_progress: 'Работы начаты',
@@ -76,3 +76,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   resolved: 'Результат подтверждён',
   disputed: 'Результат оспорен',
 };
+
+export function requiredCaseConfirmations(houseAccountsCount: number): number {
+  return Math.max(2, Math.ceil(houseAccountsCount / 10));
+}

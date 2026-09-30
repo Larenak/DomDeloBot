@@ -807,6 +807,8 @@ paths:
                     - place
                     - status
                     - confirmationsCount
+                    - isConfirmed
+                    - submission
                     - watchersCount
                     - isWatched
                     - canDelete
@@ -884,6 +886,28 @@ paths:
                     confirmationsCount:
                       minimum: 1
                       type: integer
+                    isConfirmed:
+                      type: boolean
+                    submission:
+                      type: object
+                      required:
+                        - requiredConfirmations
+                        - registeredAccounts
+                        - mode
+                      properties:
+                        requiredConfirmations:
+                          minimum: 2
+                          type: integer
+                        registeredAccounts:
+                          minimum: 0
+                          type: integer
+                        sentAt:
+                          format: date-time
+                          type: string
+                        mode:
+                          type: string
+                          enum:
+                            - demo
                     watchersCount:
                       minimum: 0
                       type: integer
@@ -1138,6 +1162,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -1215,6 +1241,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -1448,6 +1496,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -1525,6 +1575,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -1839,6 +1911,8 @@ paths:
                     - place
                     - status
                     - confirmationsCount
+                    - isConfirmed
+                    - submission
                     - watchersCount
                     - isWatched
                     - canDelete
@@ -1916,6 +1990,28 @@ paths:
                     confirmationsCount:
                       minimum: 1
                       type: integer
+                    isConfirmed:
+                      type: boolean
+                    submission:
+                      type: object
+                      required:
+                        - requiredConfirmations
+                        - registeredAccounts
+                        - mode
+                      properties:
+                        requiredConfirmations:
+                          minimum: 2
+                          type: integer
+                        registeredAccounts:
+                          minimum: 0
+                          type: integer
+                        sentAt:
+                          format: date-time
+                          type: string
+                        mode:
+                          type: string
+                          enum:
+                            - demo
                     watchersCount:
                       minimum: 0
                       type: integer
@@ -2117,6 +2213,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -2194,6 +2292,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -2379,6 +2499,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -2456,6 +2578,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -2640,6 +2784,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -2717,6 +2863,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -2947,6 +3115,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -3024,6 +3194,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer
@@ -3249,6 +3441,8 @@ paths:
                   - place
                   - status
                   - confirmationsCount
+                  - isConfirmed
+                  - submission
                   - watchersCount
                   - isWatched
                   - canDelete
@@ -3326,6 +3520,28 @@ paths:
                   confirmationsCount:
                     minimum: 1
                     type: integer
+                  isConfirmed:
+                    type: boolean
+                  submission:
+                    type: object
+                    required:
+                      - requiredConfirmations
+                      - registeredAccounts
+                      - mode
+                    properties:
+                      requiredConfirmations:
+                        minimum: 2
+                        type: integer
+                      registeredAccounts:
+                        minimum: 0
+                        type: integer
+                      sentAt:
+                        format: date-time
+                        type: string
+                      mode:
+                        type: string
+                        enum:
+                          - demo
                   watchersCount:
                     minimum: 0
                     type: integer

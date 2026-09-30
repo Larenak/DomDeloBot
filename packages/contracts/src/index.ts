@@ -132,6 +132,13 @@ export const CaseSchema = Type.Object({
   place: Type.String(),
   status: CaseStatusSchema,
   confirmationsCount: Type.Integer({ minimum: 1 }),
+  isConfirmed: Type.Boolean(),
+  submission: Type.Object({
+    requiredConfirmations: Type.Integer({ minimum: 2 }),
+    registeredAccounts: Type.Integer({ minimum: 0 }),
+    sentAt: Type.Optional(Type.String({ format: 'date-time' })),
+    mode: Type.Literal('demo'),
+  }),
   watchersCount: Type.Integer({ minimum: 0 }),
   isWatched: Type.Boolean(),
   canDelete: Type.Boolean(),

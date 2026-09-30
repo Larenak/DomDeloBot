@@ -370,7 +370,8 @@ export class BotConversationService {
         context,
         (joined
           ? `Вы присоединились к делу **№${item.number}**. Теперь проблему подтвердили ${item.confirmationsCount} жильцов.`
-          : `Дело **№${item.number}** зарегистрировано. Ответственный: ${escapeMarkdown(item.responsibleOrganization)}.`) +
+          : `Дело **№${item.number}** размещено. Подтверждений для отправки в УК: ${item.confirmationsCount} из ${item.submission.requiredConfirmations}. Автор уже учтён.`) +
+          (item.submission.sentAt ? '\n\nДело успешно отправлено диспетчеру УК (демонстрационный режим).' : '') +
           (photoAllowed ? '' : '\n\nФотография не сохранена: демонстрационный дом открыт для других участников.'),
         [
           ...(caseButton ? [[caseButton]] : []),

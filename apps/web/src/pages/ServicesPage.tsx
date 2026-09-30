@@ -28,7 +28,7 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
 
   return <main className="page">
     <section className="hero"><div><span className="eyebrow">О доме</span>
-      <h1>О доме</h1>
+      <h1>Сведения о доме</h1>
       <p>{house?.isDemo ? 'Учебный пример сведений о доме и переход к официальным услугам.' : 'Открытые сведения о выбранном доме и переход к официальным услугам.'}</p>
     </div></section>
     <section className="content-card">

@@ -71,6 +71,13 @@
       "when": 1790753369234,
       "tag": "0009_case_control_clocks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790757301549,
+      "tag": "0010_case_confirmation_gate",
+      "breakpoints": true
     }
   ]
 }

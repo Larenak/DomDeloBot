@@ -440,7 +440,12 @@ describe('ДомДело API', () => {
     } as const;
     const createdResponse = await app.inject(createRequest);
     expect(createdResponse.statusCode).toBe(201);
-    const created = createdResponse.json();
+    const pending = createdResponse.json();
+    expect(pending).toMatchObject({ status: 'draft', confirmationsCount: 1 });
+    expect(pending.deadline).toBeUndefined();
+    await addDemoHouse(app, 'resident-2');
+    const confirmed = await app.inject({ method: 'POST', url: `/api/cases/${pending.id}/confirmations`, headers: { 'x-demo-user': 'resident-2' } });
+    const created = confirmed.json();
     expect(created.deadline).toMatchObject({ title: 'Подъезд и двери — 1 сутки' });
     expect(new Date(created.deadline.dueAt).getTime() - new Date(created.deadline.startedAt).getTime())
       .toBe(86_400_000);
@@ -461,7 +466,7 @@ describe('ДомДело API', () => {
     expect(assignedResponse.json()).toMatchObject({
       status: 'assigned',
       assignee: 'Мастер домофонов Алексей',
-      version: 2,
+      version: created.version + 1,
     });
   });
 
@@ -481,14 +486,17 @@ describe('ДомДело API', () => {
       },
     });
     expect(created.statusCode).toBe(201);
-    expect(created.json().deadline).toMatchObject({ title: 'Другое — время в работе' });
-    expect(created.json().deadline.dueAt).toBeUndefined();
-    expect(created.json().deadline.complaintGuideUrl).toBeUndefined();
+    expect(created.json().deadline).toBeUndefined();
+    await addDemoHouse(app, 'resident-2');
+    const confirmed = await app.inject({ method: 'POST', url: `/api/cases/${created.json().id}/confirmations`, headers: { 'x-demo-user': 'resident-2' } });
+    expect(confirmed.json().deadline).toMatchObject({ title: 'Другое — время в работе' });
+    expect(confirmed.json().deadline.dueAt).toBeUndefined();
+    expect(confirmed.json().deadline.complaintGuideUrl).toBeUndefined();
 
     const assigned = await app.inject({
       method: 'PATCH', url: `/api/cases/${created.json().id}/status`,
       headers: { 'x-demo-user': 'dispatcher-1' },
-      payload: { status: 'assigned', expectedVersion: 1, assignee: 'Мастер' },
+      payload: { status: 'assigned', expectedVersion: confirmed.json().version, assignee: 'Мастер' },
     });
     const inProgress = await app.inject({
       method: 'PATCH', url: `/api/cases/${created.json().id}/status`,
@@ -594,12 +602,14 @@ describe('automatic text moderation', () => {
     });
     expect(created.statusCode).toBe(201);
     const id = created.json().id as string;
+    await addDemoHouse(app, 'resident-2');
+    const confirmed = await app.inject({ method: 'POST', url: `/api/cases/${id}/confirmations`, headers: { 'x-demo-user': 'resident-2' } });
 
     const rejected = await app.inject({
       method: 'PATCH', url: `/api/cases/${id}/status`,
       headers: { 'x-demo-user': 'dispatcher-1' },
       payload: {
-        status: 'assigned', expectedVersion: created.json().version,
+        status: 'assigned', expectedVersion: confirmed.json().version,
         assignee: 'Мастер', comment: 'Сука, опять сломали дверь',
       },
     });
@@ -607,6 +617,6 @@ describe('automatic text moderation', () => {
     const unchanged = await app.inject({
       method: 'GET', url: `/api/cases/${id}`, headers: { 'x-demo-user': 'resident-1' },
     });
-    expect(unchanged.json()).toMatchObject({ status: 'registered', version: created.json().version });
+    expect(unchanged.json()).toMatchObject({ status: 'registered', version: confirmed.json().version });
   });
 });

@@ -13,6 +13,7 @@ const item: CaseDto = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', houseId: '11111111-1111-4111-8111-111111111111',
   number: 128, title: 'Не горит свет', description: 'На площадке не горит свет.', category: 'lighting',
   place: 'Площадка', entrance: '2', status: 'registered', confirmationsCount: 1, watchersCount: 1,
+  isConfirmed: true, submission: { requiredConfirmations: 2, registeredAccounts: 6, mode: 'demo' },
   isWatched: true, canDelete: true, responsibleOrganization: 'УК', version: 1, isDemo: false,
   createdAt: '2026-09-30T10:00:00.000Z', updatedAt: '2026-09-30T10:00:00.000Z', history: [], attachments: [],
 };

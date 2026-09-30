@@ -80,7 +80,7 @@ function DispatcherCase({ item, role }: { item: CaseDto; role: UserRole }) {
 
 export function DispatcherPage({ role }: { role: UserRole }) {
   const query = useQuery({ queryKey: ['cases'], queryFn: caseApi.list, refetchInterval: 15_000 });
-  const openCases = query.data?.filter((item) => item.status !== 'resolved') || [];
+  const openCases = query.data?.filter((item) => item.status !== 'resolved' && Boolean(item.submission.sentAt)) || [];
   const manyConfirmed = openCases.filter((item) => item.confirmationsCount >= 3);
   const categories = Object.entries(openCases.reduce<Record<string, number>>((result, item) => {
     result[item.category] = (result[item.category] || 0) + 1;
@@ -93,7 +93,7 @@ export function DispatcherPage({ role }: { role: UserRole }) {
   return (
     <main className="page">
       <section className="hero hero--dispatcher">
-        <div><span className="eyebrow">Рабочая очередь</span><h1>Очередь диспетчера</h1><p>Дела, которым нужен следующий шаг.</p></div>
+        <div><span className="eyebrow">Рабочая очередь</span><h1>Очередь диспетчера</h1><p>Подтверждённые жителями дела. Отправка в УК демонстрационная.</p></div>
         <div className="dispatcher-kpi"><strong>{openCases.length}</strong><span>в работе</span></div>
       </section>
       {query.data ? <section className="content-card" aria-label="Сводка обращений">

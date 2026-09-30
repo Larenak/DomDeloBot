@@ -128,10 +128,6 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
         ) : null}
       </header>
 
-      {isDemoHouse ? <div className="demo-mode-banner" role="status">
-        Деморежим: дом и данные учебные. <NavLink to="/demo">Выбрать другую роль →</NavLink>
-      </div> : null}
-
       <Routes>
         <Route path="/" element={<CasesPage canCreate={canCreate} canWatch={canWatch} />} />
         <Route path="/new" element={canCreate ? <NewCasePage isDemoHouse={isDemoHouse} /> : <Navigate to={homePath} replace />} />

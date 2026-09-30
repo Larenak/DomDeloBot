@@ -49,7 +49,7 @@ export function startOutboxWorker(
             if (delivered) continue;
             const message = payload.toStatus
               ? `Дом ${target.address}: дело №${target.caseNumber}. Новый статус: ${caseStatusLabels[payload.toStatus]}.`
-              : `Новая проблема по адресу ${target.address}: дело №${target.caseNumber}. Откройте мини-приложение, чтобы посмотреть детали.`;
+              : `Новая проблема по адресу ${target.address}: дело №${target.caseNumber}. Собираем подтверждения жителей. Откройте мини-приложение, чтобы подтвердить проблему.`;
             await notifier.sendToChat(Number(target.chatId), message);
             await db.insert(outboxDeliveries).values({
               eventId: event.id, maxChatId: target.chatId,

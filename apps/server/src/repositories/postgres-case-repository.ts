@@ -7,7 +7,7 @@ import type {
   HouseContextDto,
   TransitionCaseInput,
 } from '@domdelo/contracts';
-import { assertTransitionAllowed, userRoles, type CaseStatus, type UserRole } from '@domdelo/domain';
+import { assertTransitionAllowed, requiredCaseConfirmations, userRoles, type CaseStatus, type UserRole } from '@domdelo/domain';
 import { and, count, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm';
 
 import type { Database } from '../db/client.js';
@@ -297,10 +297,12 @@ export class PostgresCaseRepository implements CaseRepository {
   async listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]> {
     const houseId = activeHouseId(actor);
     if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
+    await this.releasePendingCases(actor);
     const rows = await this.db
       .select({ id: cases.id })
       .from(cases)
-      .where(and(eq(cases.houseId, houseId), status ? eq(cases.status, status) : undefined))
+      .where(and(eq(cases.houseId, houseId), status ? eq(cases.status, status) : undefined,
+        ['dispatcher', 'executor'].includes(actor.role) ? ne(cases.status, 'draft') : undefined))
       .orderBy(desc(cases.updatedAt));
     return Promise.all(rows.map(({ id }) => this.hydrate(actor, id)));
   }
@@ -313,7 +315,8 @@ export class PostgresCaseRepository implements CaseRepository {
     const [house, rows] = await Promise.all([
       this.db.select({ address: houses.address }).from(houses)
         .where(eq(houses.id, houseId)).limit(1),
-      this.db.select({ id: cases.id }).from(cases).where(eq(cases.houseId, houseId)),
+      this.db.select({ id: cases.id }).from(cases).where(and(eq(cases.houseId, houseId),
+        actor.role === 'dispatcher' ? ne(cases.status, 'draft') : undefined)),
     ]);
     if (!house[0]) throw new NotFoundError('Дом не найден');
     const items = await Promise.all(rows.map(({ id }) => this.hydrate(actor, id)));
@@ -362,6 +365,7 @@ export class PostgresCaseRepository implements CaseRepository {
         and(
           eq(cases.houseId, houseId),
           ne(cases.status, 'resolved'),
+          ['dispatcher', 'executor'].includes(actor.role) ? ne(cases.status, 'draft') : undefined,
           eq(cases.category, input.category),
           input.entrance ? eq(cases.entrance, input.entrance) : undefined,
           sql`${similarity} >= 0.2`,
@@ -385,7 +389,6 @@ export class PostgresCaseRepository implements CaseRepository {
     const [house] = await this.db.select({ isDemo: houses.isDemo }).from(houses)
       .where(eq(houses.id, houseId)).limit(1);
     if (!house) throw new NotFoundError('Дом не найден');
-    const deadline = startCaseDeadline(input.category, new Date());
 
     const created = await this.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${actor.id}:${idempotencyKey}`}, 0))`);
@@ -407,10 +410,7 @@ export class PostgresCaseRepository implements CaseRepository {
           ...(input.entrance ? { entrance: input.entrance } : {}),
           place: input.place,
           normalizedText: normalized(`${input.place} ${input.description}`),
-          status: 'registered',
-          deadlinePolicyKey: deadline.policyKey,
-          deadlineStartedAt: deadline.startedAt,
-          ...(deadline.dueAt ? { deadlineDueAt: deadline.dueAt } : {}),
+          status: 'draft',
           responsibleOrganization: 'Адресат уточняется диспетчером',
           isDemo: this.demoMode || house.isDemo,
         })
@@ -426,12 +426,12 @@ export class PostgresCaseRepository implements CaseRepository {
         tx.insert(caseWatchers).values({ caseId: inserted.id, userId: actor.id }),
         tx.insert(caseStatusHistory).values({
           caseId: inserted.id,
-          toStatus: 'registered',
+          toStatus: 'draft',
           actorId: actor.id,
-          comment: 'Дело зарегистрировано',
+          comment: 'Дело размещено. Собираем подтверждения жителей',
         }),
         tx.insert(outboxEvents).values({
-          topic: 'case.registered',
+          topic: 'case.created',
           aggregateId: inserted.id,
           payload: { caseId: inserted.id, actorId: actor.id },
         }),
@@ -452,6 +452,9 @@ export class PostgresCaseRepository implements CaseRepository {
     ensureResident(actor);
     await this.ensureVisible(actor, caseId);
     await this.db.transaction(async (tx) => {
+      const [item] = await tx.select().from(cases)
+        .where(and(eq(cases.id, caseId), eq(cases.houseId, activeHouseId(actor)))).limit(1).for('update');
+      if (!item) throw new NotFoundError('Дело не найдено');
       const inserted = await tx
         .insert(caseConfirmations)
         .values({ caseId, userId: actor.id })
@@ -466,6 +469,7 @@ export class PostgresCaseRepository implements CaseRepository {
           entityId: caseId,
         });
       }
+      await this.releaseIfConfirmed(tx, item, actor.id);
     });
     return this.hydrate(actor, caseId);
   }
@@ -494,6 +498,7 @@ export class PostgresCaseRepository implements CaseRepository {
   ): Promise<CaseDto> {
     const current = await this.ensureVisible(actor, caseId);
     const houseId = activeHouseId(actor);
+    if (current.status === 'draft') throw new ForbiddenError('Сначала нужны подтверждения жителей');
     assertTransitionAllowed(current.status, input.status, actor.role);
     assertAcceptableCaseText({ 'Исполнитель': input.assignee, 'Комментарий': input.comment });
     if (input.status === 'assigned' && !input.assignee?.trim()) {
@@ -617,6 +622,36 @@ export class PostgresCaseRepository implements CaseRepository {
     return inserted.length > 0;
   }
 
+  private async releasePendingCases(actor: AuthenticatedActor, caseId?: string): Promise<void> {
+    const houseId = activeHouseId(actor);
+    await this.db.transaction(async (tx) => {
+      const pending = await tx.select().from(cases)
+        .where(and(eq(cases.houseId, houseId), eq(cases.status, 'draft'), caseId ? eq(cases.id, caseId) : undefined))
+        .orderBy(cases.id).for('update');
+      for (const item of pending) await this.releaseIfConfirmed(tx, item, item.authorId);
+    });
+  }
+
+  private async releaseIfConfirmed(tx: Parameters<Parameters<Database['transaction']>[0]>[0], item: typeof cases.$inferSelect, actorId: string): Promise<void> {
+    if (item.status !== 'draft') return;
+    const [[accountCount], [confirmations]] = await Promise.all([
+      tx.select({ value: count() }).from(houseMembers).where(eq(houseMembers.houseId, item.houseId)),
+      tx.select({ value: count() }).from(caseConfirmations).where(eq(caseConfirmations.caseId, item.id)),
+    ]);
+    const required = requiredCaseConfirmations(accountCount?.value ?? 0);
+    if ((confirmations?.value ?? 0) < required) return;
+    const sentAt = new Date();
+    const deadline = startCaseDeadline(item.category as CaseCategory, sentAt);
+    await tx.update(cases).set({ status: 'registered', submittedToUkAt: sentAt, submissionThreshold: required,
+      updatedAt: sentAt, version: sql`${cases.version} + 1`, deadlinePolicyKey: deadline.policyKey,
+      deadlineStartedAt: deadline.startedAt, deadlineDueAt: deadline.dueAt ?? null,
+    }).where(and(eq(cases.id, item.id), eq(cases.status, 'draft')));
+    await tx.insert(caseStatusHistory).values({ caseId: item.id, fromStatus: 'draft', toStatus: 'registered',
+      actorId, comment: 'Дело успешно отправлено диспетчеру УК (демонстрационный режим)', createdAt: sentAt });
+    await tx.insert(auditLog).values({ actorId, action: 'case.submitted_to_uk_demo', entityType: 'case', entityId: item.id,
+      metadata: { requiredConfirmations: required, confirmations: confirmations?.value, registeredAccounts: accountCount?.value } });
+  }
+
   private async ensureVisible(actor: AuthenticatedActor, caseId: string) {
     const houseId = activeHouseId(actor);
     const [item] = await this.db
@@ -625,10 +660,14 @@ export class PostgresCaseRepository implements CaseRepository {
       .where(and(eq(cases.id, caseId), eq(cases.houseId, houseId)))
       .limit(1);
     if (!item) throw new NotFoundError('Дело не найдено');
+    if (item.status === 'draft' && ['dispatcher', 'executor'].includes(actor.role)) {
+      throw new NotFoundError('Дело ещё не отправлено диспетчеру');
+    }
     return item;
   }
 
   private async hydrate(actor: AuthenticatedActor, caseId: string): Promise<CaseDto> {
+    await this.releasePendingCases(actor, caseId);
     const item = await this.ensureVisible(actor, caseId);
     const deadline = caseDeadlineDto({
       policyKey: item.deadlinePolicyKey,
@@ -636,11 +675,14 @@ export class PostgresCaseRepository implements CaseRepository {
       dueAt: item.deadlineDueAt,
       stoppedAt: item.deadlineStoppedAt,
     });
-    const [[confirmationCount], [watcherCount], [ownWatch], historyRows, attachmentRows] = await Promise.all([
+    const [[confirmationCount], [accountCount], [ownConfirmation], [watcherCount], [ownWatch], historyRows, attachmentRows] = await Promise.all([
       this.db
         .select({ value: count() })
         .from(caseConfirmations)
         .where(eq(caseConfirmations.caseId, caseId)),
+      this.db.select({ value: count() }).from(houseMembers).where(eq(houseMembers.houseId, item.houseId)),
+      this.db.select({ userId: caseConfirmations.userId }).from(caseConfirmations)
+        .where(and(eq(caseConfirmations.caseId, caseId), eq(caseConfirmations.userId, actor.id))).limit(1),
       this.db
         .select({ value: count() })
         .from(caseWatchers)
@@ -694,6 +736,10 @@ export class PostgresCaseRepository implements CaseRepository {
       place: item.place,
       status: item.status,
       confirmationsCount: confirmationCount?.value ?? 0,
+      isConfirmed: Boolean(ownConfirmation),
+      submission: { requiredConfirmations: item.submissionThreshold ?? requiredCaseConfirmations(accountCount?.value ?? 0),
+        registeredAccounts: accountCount?.value ?? 0, mode: 'demo',
+        ...(item.submittedToUkAt ? { sentAt: item.submittedToUkAt.toISOString() } : {}) },
       watchersCount: watcherCount?.value ?? 0,
       isWatched: Boolean(ownWatch),
       canDelete: item.authorId === actor.id && actor.role !== 'authority',
