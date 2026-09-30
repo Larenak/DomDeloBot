@@ -122,6 +122,7 @@ export const registrationApi = {
 export const caseApi = {
   list: () => api<CaseDto[]>('/api/cases'),
   get: (id: string) => api<CaseDto>(`/api/cases/${id}`),
+  remove: (id: string) => api<{ deleted: boolean }>(`/api/cases/${id}`, { method: 'DELETE' }),
   duplicates: (input: DuplicateSearchInput) =>
     api<CaseDto[]>('/api/cases/deduplication', {
       method: 'POST',

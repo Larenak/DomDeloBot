@@ -41,6 +41,7 @@ export interface CaseRepository {
   listCases(actor: AuthenticatedActor, status?: CaseStatus): Promise<CaseDto[]>;
   getHouseReport(actor: AuthenticatedActor): Promise<HouseReportDto>;
   getCase(actor: AuthenticatedActor, caseId: string): Promise<CaseDto>;
+  deleteCase(actor: AuthenticatedActor, caseId: string): Promise<void>;
   findDuplicates(actor: AuthenticatedActor, input: DuplicateSearchInput): Promise<CaseDto[]>;
   createCase(
     actor: AuthenticatedActor,

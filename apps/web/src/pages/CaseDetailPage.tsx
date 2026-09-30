@@ -1,7 +1,7 @@
 import { caseStatusLabels, getAvailableTransitions, type UserRole } from '@domdelo/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ChangeEvent, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { caseApi } from '../api.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
@@ -17,6 +17,9 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
   const { caseId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
+  const deleted = useRef(false);
   const [uploadKind, setUploadKind] = useState<'problem' | 'result'>('problem');
   const query = useQuery({ queryKey: ['case', caseId], queryFn: () => caseApi.get(caseId) });
   const invalidate = async () => {
@@ -41,6 +44,27 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
   });
 
   const isResidentRole = ['resident', 'chair'].includes(role);
+  const remove = useMutation({
+    mutationFn: () => caseApi.remove(caseId),
+    onSuccess: async () => {
+      deleted.current = true;
+      await queryClient.cancelQueries({ queryKey: ['case', caseId], exact: true });
+      navigate(isResidentRole ? '/' : '/dispatcher', { replace: true });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cases'] }),
+        queryClient.invalidateQueries({ queryKey: ['house-report'] }),
+        queryClient.invalidateQueries({ queryKey: ['polls'] }),
+      ]);
+    },
+  });
+
+  useEffect(() => {
+    deleted.current = false;
+    return () => {
+      // Remove the card after its observer has unsubscribed, so it cannot fetch again.
+      if (deleted.current) queryClient.removeQueries({ queryKey: ['case', caseId], exact: true });
+    };
+  }, [caseId, queryClient]);
 
   const onFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -115,6 +139,27 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
         ) : null}
         {watch.isError ? <p className="form-error">{watch.error.message}</p> : null}
       </section>
+
+      {item.canDelete ? (
+        <section className="content-card">
+          {deleteConfirmation ? (
+            <div role="alert">
+              <h2>Удалить дело №{item.number}?</h2>
+              <p>Дело исчезнет из списка у всех жителей. Восстановить его не получится.</p>
+              <div className="action-row">
+                <button className="button button--danger" disabled={remove.isPending} onClick={() => remove.mutate()}>
+                  {remove.isPending ? 'Удаляем…' : 'Да, удалить дело'}
+                </button>
+                <button className="button button--secondary" disabled={remove.isPending} onClick={() => {
+                  setDeleteConfirmation(false);
+                  remove.reset();
+                }}>Отмена</button>
+              </div>
+            </div>
+          ) : <button className="button button--danger" onClick={() => setDeleteConfirmation(true)}>Удалить дело</button>}
+          {remove.isError ? <p className="form-error" role="alert">{remove.error.message}</p> : null}
+        </section>
+      ) : null}
 
       <section className="content-card">
         <div className="section-heading section-heading--inside">

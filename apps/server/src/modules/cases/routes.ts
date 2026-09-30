@@ -64,6 +64,31 @@ export async function registerCaseRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.delete(
+    '/api/cases/:caseId',
+    {
+      ...secured,
+      schema: {
+        tags: ['cases'],
+        security: [{ bearerAuth: [] }, { demoUser: [] }],
+        params: {
+          type: 'object',
+          required: ['caseId'],
+          properties: { caseId: { type: 'string', format: 'uuid' } },
+        },
+        response: {
+          200: { type: 'object', required: ['deleted'], properties: { deleted: { type: 'boolean' } } },
+          401: ErrorSchema, 403: ErrorSchema, 404: ErrorSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { caseId } = request.params as { caseId: string };
+      await app.caseRepository.deleteCase(request.actor!, caseId);
+      return { deleted: true };
+    },
+  );
+
   app.post(
     '/api/cases/deduplication',
     {

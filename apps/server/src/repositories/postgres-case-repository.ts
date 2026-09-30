@@ -324,6 +324,27 @@ export class PostgresCaseRepository implements CaseRepository {
     return this.hydrate(actor, caseId);
   }
 
+  async deleteCase(actor: AuthenticatedActor, caseId: string): Promise<void> {
+    const houseId = activeHouseId(actor);
+    if (actor.role === 'authority') throw new ForbiddenError('Доступна только сводная статистика');
+    await this.db.transaction(async (tx) => {
+      const [item] = await tx.select({ authorId: cases.authorId }).from(cases)
+        .where(and(eq(cases.id, caseId), eq(cases.houseId, houseId)))
+        .limit(1).for('update');
+      if (!item) throw new NotFoundError('Дело не найдено');
+      if (item.authorId !== actor.id) {
+        throw new ForbiddenError('Удалить дело может только его автор');
+      }
+      await tx.delete(outboxEvents).where(eq(outboxEvents.aggregateId, caseId));
+      await tx.delete(cases).where(and(
+        eq(cases.id, caseId), eq(cases.houseId, houseId), eq(cases.authorId, actor.id),
+      ));
+      await tx.insert(auditLog).values({
+        actorId: actor.id, action: 'case.deleted', entityType: 'case', entityId: caseId,
+      });
+    });
+  }
+
   async findDuplicates(
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
@@ -659,6 +680,7 @@ export class PostgresCaseRepository implements CaseRepository {
       confirmationsCount: confirmationCount?.value ?? 0,
       watchersCount: watcherCount?.value ?? 0,
       isWatched: Boolean(ownWatch),
+      canDelete: item.authorId === actor.id && actor.role !== 'authority',
       responsibleOrganization: item.responsibleOrganization,
       ...(item.assignee ? { assignee: item.assignee } : {}),
       ...(item.resultComment ? { resultComment: item.resultComment } : {}),

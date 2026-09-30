@@ -329,6 +329,63 @@ describe('ДомДело API', () => {
     expect(response.json()[0]).toMatchObject({ number: 128, category: 'lighting' });
   });
 
+  it('deletes an author-owned case with followers and history and removes it from all views', async () => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    await addDemoHouse(app, 'resident-2');
+    const headers = { 'x-demo-user': 'resident-1', 'idempotency-key': 'delete-owned-case' };
+    const payload = { title: 'Течёт труба в подвале', description: 'В подвале течёт труба, на полу вода.', category: 'water', place: 'Подвал' };
+    const created = await app.inject({ method: 'POST', url: '/api/cases', headers, payload });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().canDelete).toBe(true);
+    const caseId = created.json().id as string;
+    await app.inject({ method: 'POST', url: `/api/cases/${caseId}/watchers`, headers: { 'x-demo-user': 'resident-2' } });
+    await app.inject({ method: 'POST', url: `/api/cases/${caseId}/confirmations`, headers: { 'x-demo-user': 'resident-2' } });
+    const removed = await app.inject({ method: 'DELETE', url: `/api/cases/${caseId}`, headers });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json()).toEqual({ deleted: true });
+    for (const user of ['resident-1', 'resident-2']) {
+      const list = await app.inject({ method: 'GET', url: '/api/cases', headers: { 'x-demo-user': user } });
+      expect(list.json().some((item: { id: string }) => item.id === caseId)).toBe(false);
+      const detail = await app.inject({ method: 'GET', url: `/api/cases/${caseId}`, headers: { 'x-demo-user': user } });
+      expect(detail.statusCode).toBe(404);
+    }
+    const repeat = await app.inject({ method: 'DELETE', url: `/api/cases/${caseId}`, headers });
+    expect(repeat.statusCode).toBe(404);
+    const duplicates = await app.inject({ method: 'POST', url: '/api/cases/deduplication', headers, payload });
+    expect(duplicates.json().some((item: { id: string }) => item.id === caseId)).toBe(false);
+    const recreated = await app.inject({ method: 'POST', url: '/api/cases', headers, payload });
+    expect(recreated.statusCode).toBe(201);
+    expect(recreated.json().id).not.toBe(caseId);
+    expect(recreated.json()).toMatchObject({ watchersCount: 1, confirmationsCount: 1 });
+  });
+
+  it.each(['resident-2', 'chair-1', 'dispatcher-1', 'executor-1', 'authority-1'])("denies deleting another author's case as %s", async (user) => {
+    const app = await testApp();
+    await addDemoHouse(app, 'resident-1');
+    if (user === 'resident-2') await addDemoHouse(app, user);
+    const url = '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const removed = await app.inject({ method: 'DELETE', url, headers: { 'x-demo-user': user }, payload: { authorId: '22222222-2222-4222-8222-222222222222', canDelete: true } });
+    expect(removed.statusCode).toBe(403);
+    const detail = await app.inject({ method: 'GET', url, headers: { 'x-demo-user': 'resident-1' } });
+    expect(detail.statusCode).toBe(200);
+    if (user !== 'authority-1') {
+      const other = await app.inject({ method: 'GET', url, headers: { 'x-demo-user': user } });
+      expect(other.json().canDelete).toBe(false);
+    }
+  });
+
+  it('requires authentication and the selected house for deletion', async () => {
+    const app = await testApp();
+    const url = '/api/cases/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect((await app.inject({ method: 'DELETE', url })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'DELETE', url, headers: { 'x-demo-user': 'resident-1' } })).statusCode).toBe(403);
+    await app.inject({ method: 'POST', url: '/api/me/houses', headers: { 'x-demo-user': 'resident-1' }, payload: { fiasId: moscowId } });
+    expect((await app.inject({ method: 'DELETE', url, headers: { 'x-demo-user': 'resident-1' } })).statusCode).toBe(404);
+    await addDemoHouse(app);
+    expect((await app.inject({ method: 'DELETE', url, headers: { 'x-demo-user': 'resident-1' } })).statusCode).toBe(200);
+  });
+
   it('tracks followed cases per resident and follows newly created cases automatically', async () => {
     const app = await testApp();
     await addDemoHouse(app, 'resident-1');

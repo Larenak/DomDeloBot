@@ -2,21 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { houseApi, serviceApi } from '../api.js';
 
-const otherServices = [
-  {
-    title: 'Правила управления домом · № 416',
-    detail: 'Постановление содержит обязанности управляющей организации и отдельные сроки для аварийной диспетчерской службы. Для обычной заявки срок нужно определять по виду работ и применимой норме.',
-    facts: [
-      'Пункт 13: о плановом сроке выполнения аварийной заявки сообщают в течение 30 минут после регистрации.',
-      'Аварии внутридомовых систем воды, отопления и электроснабжения локализуют в течение 30 минут после регистрации заявки.',
-      'Засор внутридомовой канализации устраняют в течение 2 часов после регистрации заявки.',
-      'Аварийное повреждение указанных инженерных систем устраняют не позднее 3 суток с даты повреждения.',
-      'Эти сроки нельзя автоматически применять к лифту или обычной замене лампы.',
-    ],
-    href: 'https://gji.tatarstan.ru/normativnie-dokumenti.htm?pub_id=3584812.htm',
-  },
-];
-
 function formatDate(value?: string): string {
   if (!value) return '';
   const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -42,8 +27,8 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
   const loading = Boolean(house && publicData.isPending);
 
   return <main className="page">
-    <section className="hero"><div><span className="eyebrow">Услуги дома</span>
-      <h1>Что доступно</h1>
+    <section className="hero"><div><span className="eyebrow">О доме</span>
+      <h1>О доме</h1>
       <p>{house?.isDemo ? 'Учебный пример сведений о доме и переход к официальным услугам.' : 'Открытые сведения о выбранном доме и переход к официальным услугам.'}</p>
     </div></section>
     <section className="content-card">
@@ -109,12 +94,7 @@ export function ServicesPage({ canCreate, canManage }: { canCreate: boolean; can
         {!house?.isDemo && overhaul?.worksSourceUrl ? <a className="service-source-link" href={overhaul.worksSourceUrl} target="_blank" rel="noopener noreferrer">Выгрузка работ ФРТ ↗</a> : null}
         <a className="service-source-link" href="https://cdn.dom.gosuslugi.ru/webhelp/new/topics/public_part/view_repairs_regional_address_plan-och.html" target="_blank" rel="noopener noreferrer">Как проверить программу в ГИС ЖКХ ↗</a>
       </section>
-      {otherServices.map((service) => <section className="content-card" key={service.title}>
-        <h2>{service.title}</h2>
-        <p>{service.detail}</p>
-        {'facts' in service && service.facts ? <ul className="service-facts">{service.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}
-        <a className="button button--secondary" href={service.href} target="_blank" rel="noopener noreferrer">Официальный источник ↗</a>
-      </section>)}
+
     </div>
     <p className="muted">ДомДело показывает опубликованные сведения. За актуальной информацией и юридически значимыми действиями переходите к первоисточнику.</p>
   </main>;

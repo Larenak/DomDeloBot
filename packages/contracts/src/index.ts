@@ -124,6 +124,7 @@ export const CaseSchema = Type.Object({
   confirmationsCount: Type.Integer({ minimum: 1 }),
   watchersCount: Type.Integer({ minimum: 0 }),
   isWatched: Type.Boolean(),
+  canDelete: Type.Boolean(),
   responsibleOrganization: Type.String(),
   assignee: Type.Optional(Type.String()),
   resultComment: Type.Optional(Type.String()),

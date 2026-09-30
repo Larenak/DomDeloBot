@@ -83,6 +83,7 @@ function seedCases(): CaseDto[] {
       confirmationsCount: 6,
       watchersCount: 4,
       isWatched: false,
+      canDelete: false,
       responsibleOrganization: 'УК «Наш дом»',
       version: 1,
       isDemo: true,
@@ -112,6 +113,7 @@ function seedCases(): CaseDto[] {
       confirmationsCount: 3,
       watchersCount: 5,
       isWatched: false,
+      canDelete: false,
       responsibleOrganization: 'УК «Наш дом»',
       assignee: 'Мастер участка Сергей',
       version: 3,
@@ -190,6 +192,10 @@ type StoredHouse = { id: string; address: string; normalizedAddress: string; isD
 
 export class InMemoryCaseRepository implements CaseRepository {
   private readonly items = seedCases();
+  private readonly authors = new Map<string, string>([
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', demoActors['resident-1']!.id],
+    ['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', demoActors['resident-2']!.id],
+  ]);
   private readonly confirmations = new Set<string>();
   private readonly watchers = new Set<string>();
   private readonly webhookEvents = new Set<string>();
@@ -355,6 +361,23 @@ export class InMemoryCaseRepository implements CaseRepository {
     return this.viewCase(actor, item);
   }
 
+  async deleteCase(actor: AuthenticatedActor, caseId: string): Promise<void> {
+    const item = this.getMutable(actor, caseId);
+    if (this.authors.get(caseId) !== actor.id) {
+      throw new ForbiddenError('Удалить дело может только его автор');
+    }
+    this.items.splice(this.items.indexOf(item), 1);
+    this.authors.delete(caseId);
+    for (const entries of [this.confirmations, this.watchers]) {
+      for (const key of entries) {
+        if (key.startsWith(`${caseId}:`)) entries.delete(key);
+      }
+    }
+    for (const [key, id] of this.idempotencyKeys) {
+      if (id === caseId) this.idempotencyKeys.delete(key);
+    }
+  }
+
   async findDuplicates(
     actor: AuthenticatedActor,
     input: DuplicateSearchInput,
@@ -403,7 +426,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     const createdAt = new Date().toISOString();
     const item: CaseDto = {
       id: randomUUID(),
-      number: Math.max(...this.items.map((candidate) => candidate.number)) + 1,
+      number: Math.max(0, ...this.items.map((candidate) => candidate.number)) + 1,
       houseId,
       title: input.title,
       description: input.description,
@@ -414,6 +437,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       confirmationsCount: 1,
       watchersCount: 1,
       isWatched: true,
+      canDelete: true,
       responsibleOrganization: routeResponsibleOrganization(input.category),
       version: 1,
       isDemo: true,
@@ -431,6 +455,7 @@ export class InMemoryCaseRepository implements CaseRepository {
       attachments: [],
     };
     this.items.push(item);
+    this.authors.set(item.id, actor.id);
     this.idempotencyKeys.set(idempotencyScope, item.id);
     this.confirmations.add(`${item.id}:${actor.id}`);
     this.watchers.add(`${item.id}:${actor.id}`);
@@ -561,6 +586,7 @@ export class InMemoryCaseRepository implements CaseRepository {
     return {
       ...structuredClone(item),
       isWatched: this.watchers.has(`${item.id}:${actor.id}`),
+      canDelete: this.authors.get(item.id) === actor.id,
     };
   }
 }

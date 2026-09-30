@@ -101,7 +101,7 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
         <nav className="top-links" aria-label="Разделы">
           {!isAuthority ? <NavLink to="/">Дела</NavLink> : null}
           <NavLink to="/polls">Опросы</NavLink>
-          <NavLink to="/services">Услуги</NavLink>
+          <NavLink to="/services">О доме</NavLink>
           {demoHouseAvailable ? <NavLink to="/demo">Демо</NavLink> : null}
           {canReport ? <NavLink to="/reports">Сводка</NavLink> : null}
           {isWorkRole ? <NavLink to="/dispatcher">Диспетчер</NavLink> : null}
@@ -150,7 +150,7 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
         </NavLink> : null}
         {canCreate ? <NavLink to="/new"><span>＋</span>Создать</NavLink> : null}
         {!isWorkRole ? <NavLink to="/polls"><span>◉</span>Опросы</NavLink> : null}
-        <NavLink to="/services"><span>▧</span>Услуги</NavLink>
+        <NavLink to="/services"><span>▧</span>О доме</NavLink>
         {canReport ? <NavLink to="/reports"><span>▤</span>Сводка</NavLink> : null}
         {isWorkRole ? <NavLink to="/dispatcher"><span>▦</span>Очередь</NavLink> : null}
         <NavLink to="/houses"><span>⌂</span>Мои дома</NavLink>
