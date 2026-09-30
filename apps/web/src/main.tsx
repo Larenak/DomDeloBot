@@ -28,7 +28,7 @@ async function bootstrap() {
   await initializeMaxSession().catch(() => undefined);
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <MaxUI>
+      <MaxUI className="domdelo-ui">
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <App demoMode={publicConfig.demoMode} demoHouseAvailable={Boolean(publicConfig.demoHouseAvailable)} />

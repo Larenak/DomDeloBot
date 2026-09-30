@@ -75,4 +75,37 @@ describe('опрос жителей', () => {
     });
     expect(create.statusCode).toBe(403);
   });
+  it('allows the chair to delete a house poll with answers and rejects other roles and houses', async () => {
+    const app = await buildApp({ config });
+    openedApps.push(app);
+    const headers = { 'x-demo-user': 'chair-1' };
+    const listed = await app.inject({ method: 'GET', url: '/api/polls', headers });
+    const poll = listed.json()[0];
+    const vote = await app.inject({
+      method: 'POST', url: '/api/polls/' + poll.id + '/votes', headers,
+      payload: { optionId: poll.options[0].id },
+    });
+    expect(vote.statusCode).toBe(200);
+    expect(vote.json().totalVotes).toBe(1);
+
+    const url = '/api/polls/' + poll.id;
+    expect((await app.inject({ method: 'DELETE', url })).statusCode).toBe(401);
+    for (const role of ['resident-1', 'dispatcher-1', 'executor-1', 'authority-1']) {
+      expect((await app.inject({ method: 'DELETE', url, headers: { 'x-demo-user': role } })).statusCode).toBe(403);
+    }
+    await expect(app.pollRepository.remove({
+      ...demoActors['chair-1']!, houseId: '99999999-9999-4999-8999-999999999999',
+    }, poll.id)).rejects.toThrow('Опрос не найден');
+    expect((await app.inject({ method: 'GET', url: '/api/polls', headers })).json()).toHaveLength(1);
+
+    const removed = await app.inject({ method: 'DELETE', url, headers });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json()).toEqual({ deleted: true });
+    expect((await app.inject({ method: 'GET', url: '/api/polls', headers })).json()).toEqual([]);
+    expect((await app.inject({
+      method: 'POST', url: url + '/votes', headers, payload: { optionId: poll.options[0].id },
+    })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'DELETE', url, headers })).statusCode).toBe(404);
+  });
+
 });

@@ -63,6 +63,19 @@ export class InMemoryPollRepository implements PollRepository {
     return this.view(poll, actor.id);
   }
 
+  async remove(actor: AuthenticatedActor, pollId: string): Promise<void> {
+    if (!['chair', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Удалить опрос может председатель совета дома');
+    }
+    const houseId = activeHouseId(actor);
+    const index = this.polls.findIndex((poll) => poll.id === pollId && poll.houseId === houseId);
+    if (index < 0) throw new NotFoundError('Опрос не найден');
+    this.polls.splice(index, 1);
+    for (const key of this.votes.keys()) {
+      if (key.startsWith(pollId + ':')) this.votes.delete(key);
+    }
+  }
+
   async vote(actor: AuthenticatedActor, pollId: string, optionId: string): Promise<PollDto> {
     if (!['resident', 'chair'].includes(actor.role)) {
       throw new ForbiddenError('Ответить на опрос может житель или председатель дома');

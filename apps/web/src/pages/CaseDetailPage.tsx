@@ -89,7 +89,7 @@ export function CaseDetailPage({ demoMode, role }: { demoMode: boolean; role: Us
     <main className="page page--detail">
       <Link className="back-link" to={isResidentRole ? '/' : '/dispatcher'}>← Назад к списку</Link>
       {searchParams.get('created') ? (
-        <div className="success-banner">✓ Дело зарегистрировано. Соседи уже могут присоединиться.</div>
+        <div className="success-banner" role="status">✓ Дело успешно размещено. Соседи уже могут присоединиться.</div>
       ) : null}
       {searchParams.get('joined') ? (
         <div className="success-banner">✓ Вы присоединились к делу. Теперь это одна коллективная проблема.</div>

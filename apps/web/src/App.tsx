@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { getDemoUser, getPublicDemoRole, getSessionActor, houseApi, setDemoUser, setPublicDemoRole, type DemoUserKey, type PublicDemoRole } from './api.js';
+import { roleHomePath } from './navigation.js';
 import { ErrorState, LoadingState } from './components/StateViews.js';
 import { CaseDetailPage } from './pages/CaseDetailPage.js';
 import { ComplaintDraftPage } from './pages/ComplaintDraftPage.js';
@@ -60,11 +61,10 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
   const canReport = ['dispatcher', 'authority', 'admin'].includes(role);
   const canCreate = ['resident', 'chair', 'admin'].includes(role);
   const canWatch = ['resident', 'chair'].includes(role);
-  const homePath = isAuthority ? '/reports' : isWorkRole ? '/dispatcher' : '/';
+  const homePath = roleHomePath(role);
   const switchUser = (value: DemoUserKey) => {
     setDemoUser(value);
-    window.location.assign(value.startsWith('authority') ? '/reports'
-      : ['dispatcher-1', 'executor-1'].includes(value) ? '/dispatcher' : '/');
+    window.location.assign(roleHomePath(value.split('-')[0] as UserRole));
   };
 
   if (!demoMode && !window.WebApp?.initData) {
@@ -99,12 +99,13 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
           </label>
         ) : null}
         <nav className="top-links" aria-label="Разделы">
-          {!isAuthority ? <NavLink to="/">Дела</NavLink> : null}
+          <NavLink to={homePath}>{isAuthority ? 'Сводка' : isWorkRole ? 'Очередь' : 'Дела'}</NavLink>
+          {isWorkRole ? <NavLink to="/">Дела</NavLink> : null}
           <NavLink to="/polls">Опросы</NavLink>
           <NavLink to="/services">О доме</NavLink>
           {demoHouseAvailable ? <NavLink to="/demo">Демо</NavLink> : null}
-          {canReport ? <NavLink to="/reports">Сводка</NavLink> : null}
-          {isWorkRole ? <NavLink to="/dispatcher">Диспетчер</NavLink> : null}
+          {canReport && !isAuthority ? <NavLink to="/reports">Сводка</NavLink> : null}
+
         </nav>
         {demoMode && !window.WebApp?.initData ? (
           <label className="demo-switcher">
@@ -117,8 +118,9 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
           <label className="demo-switcher">
             <span>Демо-роль</span>
             <select value={getPublicDemoRole()} onChange={(event) => {
-              setPublicDemoRole(event.target.value as PublicDemoRole);
-              window.location.assign('/');
+              const nextRole = event.target.value as PublicDemoRole;
+              setPublicDemoRole(nextRole);
+              window.location.assign(roleHomePath(nextRole));
             }}>
               {publicDemoRoles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
@@ -145,14 +147,15 @@ function AppShell({ demoMode, demoHouseAvailable }: { demoMode: boolean; demoHou
       </Routes>
 
       <nav className="bottom-nav" aria-label="Основная навигация">
-        {!isAuthority ? <NavLink to="/" className={({ isActive }) => isActive && location.pathname === '/' ? 'active' : ''}>
-          <span>⌂</span>Дела
-        </NavLink> : null}
+        <NavLink to={homePath} className={({ isActive }) => isActive && location.pathname === homePath ? 'active' : ''}>
+          <span>{isAuthority ? '▤' : isWorkRole ? '▦' : '⌂'}</span>{isAuthority ? 'Сводка' : isWorkRole ? 'Очередь' : 'Дела'}
+        </NavLink>
+        {isWorkRole ? <NavLink to="/"><span>⌂</span>Дела</NavLink> : null}
         {canCreate ? <NavLink to="/new"><span>＋</span>Создать</NavLink> : null}
         {!isWorkRole ? <NavLink to="/polls"><span>◉</span>Опросы</NavLink> : null}
         <NavLink to="/services"><span>▧</span>О доме</NavLink>
-        {canReport ? <NavLink to="/reports"><span>▤</span>Сводка</NavLink> : null}
-        {isWorkRole ? <NavLink to="/dispatcher"><span>▦</span>Очередь</NavLink> : null}
+        {canReport && !isAuthority ? <NavLink to="/reports"><span>▤</span>Сводка</NavLink> : null}
+
         <NavLink to="/houses"><span>⌂</span>Мои дома</NavLink>
       </nav>
     </div>

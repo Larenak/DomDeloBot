@@ -46,6 +46,16 @@ export class PostgresPollRepository implements PollRepository {
     return this.hydrate(actor, id);
   }
 
+  async remove(actor: AuthenticatedActor, pollId: string): Promise<void> {
+    if (!['chair', 'admin'].includes(actor.role)) {
+      throw new ForbiddenError('Удалить опрос может председатель совета дома');
+    }
+    const deleted = await this.db.delete(polls)
+      .where(and(eq(polls.id, pollId), eq(polls.houseId, activeHouseId(actor))))
+      .returning({ id: polls.id });
+    if (!deleted.length) throw new NotFoundError('Опрос не найден');
+  }
+
   async vote(actor: AuthenticatedActor, pollId: string, optionId: string): Promise<PollDto> {
     if (!['resident', 'chair'].includes(actor.role)) {
       throw new ForbiddenError('Ответить на опрос может житель или председатель дома');

@@ -27,6 +27,26 @@ export async function registerPollRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(poll);
   });
 
+  app.delete('/api/polls/:pollId', {
+    ...secured,
+    schema: {
+      tags: ['polls'],
+      security: [{ bearerAuth: [] }, { demoUser: [] }],
+      params: {
+        type: 'object', required: ['pollId'],
+        properties: { pollId: { type: 'string', format: 'uuid' } },
+      },
+      response: {
+        200: { type: 'object', required: ['deleted'], properties: { deleted: { type: 'boolean' } } },
+        403: ErrorSchema, 404: ErrorSchema,
+      },
+    },
+  }, async (request) => {
+    const { pollId } = request.params as { pollId: string };
+    await app.pollRepository.remove(request.actor!, pollId);
+    return { deleted: true };
+  });
+
   app.post('/api/polls/:pollId/votes', {
     ...secured,
     schema: {

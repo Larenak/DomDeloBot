@@ -7,11 +7,19 @@ import { pollApi } from '../api.js';
 import { ErrorState, LoadingState } from '../components/StateViews.js';
 import { formatDateTime } from '../format.js';
 
-function PollCard({ poll, canVote }: { poll: PollDto; canVote: boolean }) {
+function PollCard({ poll, canVote, canDelete }: { poll: PollDto; canVote: boolean; canDelete: boolean }) {
   const queryClient = useQueryClient();
   const vote = useMutation({
     mutationFn: (optionId: string) => pollApi.vote(poll.id, optionId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['polls'] }),
+  });
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
+  const remove = useMutation({
+    mutationFn: () => pollApi.remove(poll.id),
+    onSuccess: async () => {
+      queryClient.setQueryData<PollDto[]>(['polls'], (current) => current?.filter((item) => item.id !== poll.id));
+      await queryClient.invalidateQueries({ queryKey: ['polls'] });
+    },
   });
   const closed = new Date(poll.closesAt).getTime() <= Date.now();
   return <article className="content-card poll-card">
@@ -31,6 +39,15 @@ function PollCard({ poll, canVote }: { poll: PollDto; canVote: boolean }) {
     <p className="muted">Ответов: {poll.totalVotes}. {poll.myOptionId ? 'Ваш ответ сохранён.' :
       closed ? 'Опрос завершён.' : canVote ? 'Можно выбрать один вариант.' : 'Ответ доступен жителю или председателю дома.'}</p>
     {vote.isError ? <p className="form-error">{vote.error.message}</p> : null}
+    {canDelete ? deleteConfirmation ? <div>
+      <p>Удалить этот опрос и все ответы? Это действие нельзя отменить.</p>
+      <button className="button button--danger" type="button" disabled={remove.isPending}
+        onClick={() => remove.mutate()}>{remove.isPending ? 'Удаляем…' : 'Удалить опрос и ответы'}</button>
+      <button className="button button--secondary" type="button" disabled={remove.isPending}
+        onClick={() => { setDeleteConfirmation(false); remove.reset(); }}>Отмена</button>
+    </div> : <button className="button button--danger" type="button"
+      onClick={() => setDeleteConfirmation(true)}>Удалить опрос</button> : null}
+    {remove.isError ? <p className="form-error">{remove.error.message}</p> : null}
   </article>;
 }
 
@@ -78,6 +95,6 @@ export function PollsPage({ role }: { role: UserRole }) {
     {query.isPending ? <LoadingState label="Загружаем опросы" /> : null}
     {query.isError ? <ErrorState message={query.error.message} onRetry={() => void query.refetch()} /> : null}
     {query.data?.length === 0 ? <section className="content-card"><p>Опросов пока нет.</p></section> : null}
-    {query.data?.map((poll) => <PollCard key={poll.id} poll={poll} canVote={canVote} />)}
+    {query.data?.map((poll) => <PollCard key={poll.id} poll={poll} canVote={canVote} canDelete={canCreate} />)}
   </main>;
 }

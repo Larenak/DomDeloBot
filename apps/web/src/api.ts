@@ -174,6 +174,7 @@ export const serviceApi = {
   house: () => api<PublicHousingDataDto>('/api/services/house'),
 };
 export const pollApi = {
+  remove: (pollId: string) => api<{ deleted: boolean }>('/api/polls/' + pollId, { method: 'DELETE' }),
   list: () => api<PollDto[]>('/api/polls'),
   create: (input: CreatePollInput) => api<PollDto>('/api/polls', {
     method: 'POST',
